@@ -1,6 +1,8 @@
 import Wallet from "@/components/wallet";
 import CampaignHeroCard from "@/components/CampaignHero";
 import DonateButton from "@/components/DonateButton";
+import DonationStatsComponent from "@/components/DonationStats";
+import DonationHistory from "@/components/DonationHistory";
 
 export default function Home() {
   return (
@@ -17,23 +19,17 @@ export default function Home() {
         
         {/* Stats Row Placeholder */}
         <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
-          Stats Row (to be implemented by teammate)
-        </div>
-
-        {/* Goal Card Placeholder */}
-        <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
-          Goal Progress Card (to be implemented by teammate)
+          <DonationStatsComponent /> {/* To be implemented by teammate */}
         </div>
 
         {/* Donation Input Placeholder */}
-        <DonateButton />
-        {/* <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
-          Donation Input Card (to be implemented by teammate)
-        </div> */}
+        <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
+          <DonateButton />
+        </div>
 
         {/* Recent Donations Placeholder */}
         <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
-          Recent Donations (to be implemented by teammate)
+          <DonationHistory /> {/* To be implemented by teammate */}
         </div>
 
       </div>
