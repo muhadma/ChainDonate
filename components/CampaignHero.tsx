@@ -15,7 +15,7 @@ export default function CampaignHeroCard({
 }: Props) {
   return (
     <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1117] p-5 shadow-lg">
-      
+
       {/* Status Badge */}
       <div className="mb-4 flex items-center gap-2">
         <span className="relative flex h-2.5 w-2.5">

@@ -67,20 +67,20 @@ export default function DonateButton({ onDonate }: DonateButtonProps) {
 
     // This is just a fake wait — no real tx happens 
     // CHANGE THIS SECTION for real TX !!!!!
-      try {
-        // ─────────────────────────────────────────────────────────────
-        // TODO (backend)
-        // ─────────────────────────────────────────────────────────────
-        await new Promise((res) => setTimeout(res, 1200));
+    try {
+      // ─────────────────────────────────────────────────────────────
+      // TODO (backend)
+      // ─────────────────────────────────────────────────────────────
+      await new Promise((res) => setTimeout(res, 1200));
 
-        setConfirmed(true);
-        onDonate?.(parseFloat(amount));
-        setTimeout(() => setConfirmed(false), 3000);
+      setConfirmed(true);
+      onDonate?.(parseFloat(amount));
+      setTimeout(() => setConfirmed(false), 3000);
 
     } catch (err: any) {
-        setError(err?.message ?? "Transaction failed. Please try again.");
+      setError(err?.message ?? "Transaction failed. Please try again.");
     } finally {
-        setConfirming(false);
+      setConfirming(false);
     }
   };
 
@@ -132,14 +132,14 @@ export default function DonateButton({ onDonate }: DonateButtonProps) {
             transition: "border-color 0.15s ease",
           }}
           onFocus={(e) =>
-            (e.target.style.borderColor = error
-              ? "rgba(248,113,113,0.7)"
-              : "rgba(74,222,128,0.4)")
+          (e.target.style.borderColor = error
+            ? "rgba(248,113,113,0.7)"
+            : "rgba(74,222,128,0.4)")
           }
           onBlur={(e) =>
-            (e.target.style.borderColor = error
-              ? "rgba(248,113,113,0.5)"
-              : "rgba(255,255,255,0.1)")
+          (e.target.style.borderColor = error
+            ? "rgba(248,113,113,0.5)"
+            : "rgba(255,255,255,0.1)")
           }
         />
 
