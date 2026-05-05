@@ -92,32 +92,7 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
           <div style={{ ...styles.barFill, width: `${progressPercentage}%` }} />
         </div>
       </div>
-
-      {/* Recent Activity Table */}
-      <div style={styles.tableWrapper}>
-        <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <TrendingUp size={18} color="#64748b" />
-          <h3 style={{ fontSize: '15px', fontWeight: '700', margin: 0 }}>Recent Contributions</h3>
-        </div>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Donor</th>
-              <th style={{ ...styles.th, textAlign: 'right' }}>Amount</th>
-              <th style={{ ...styles.th, textAlign: 'right' }}>Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.recentDonations.map((donation) => (
-              <tr key={donation.id}>
-                <td style={styles.td}>{donation.name}</td>
-                <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>₱ {donation.amount}</td>
-                <td style={{ ...styles.td, textAlign: 'right', color: '#94a3b8' }}>{donation.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      
     </div>
   );
 };
