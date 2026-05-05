@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PhilippinePeso, Users, Target, TrendingUp } from 'lucide-react';
+import { PhilippinePeso, Users, Target } from 'lucide-react';
 
 interface DonationStats {
   totalRaised: number;
