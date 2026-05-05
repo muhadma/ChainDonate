@@ -11,10 +11,10 @@ type Props = {
 export default function CampaignHeroCard({
   title = "Class Fund 2026",
   subtitle = "Raising funds for our department's capstone showcase: equipment, printing, and venue costs for all project teams.",
-  walletAddress = "addr1q...f8k2",
+  walletAddress,
 }: Props) {
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1117] p-5 shadow-lg">
+    <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-[#0f1117] p-5 shadow-lg">
 
       {/* Status Badge */}
       <div className="mb-4 flex items-center gap-2">
@@ -44,7 +44,6 @@ export default function CampaignHeroCard({
           {walletAddress}
         </span>
       </div>
-
     </div>
   );
 }

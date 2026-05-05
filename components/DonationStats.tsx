@@ -40,7 +40,7 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
     },
     grid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '16px',
       marginBottom: '24px'
     },
