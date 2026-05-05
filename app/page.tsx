@@ -1,5 +1,6 @@
 import Wallet from "@/components/wallet";
 import CampaignHeroCard from "@/components/CampaignHero";
+import DonateButton from "@/components/DonateButton";
 
 export default function Home() {
   return (
@@ -25,9 +26,10 @@ export default function Home() {
         </div>
 
         {/* Donation Input Placeholder */}
-        <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
+        <DonateButton />
+        {/* <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
           Donation Input Card (to be implemented by teammate)
-        </div>
+        </div> */}
 
         {/* Recent Donations Placeholder */}
         <div className="text-sm text-gray-500 border border-white/10 rounded-xl p-4">
