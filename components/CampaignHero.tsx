@@ -8,11 +8,18 @@ type Props = {
   walletAddress?: string;
 };
 
+export function shortenAddress(address: string, size = 6) {
+  if (!address) return "";
+  return `${address.slice(0, size)}...${address.slice(-size)}`;
+}
+
 export default function CampaignHeroCard({
   title = "Class Fund 2026",
   subtitle = "Raising funds for our department's capstone showcase: equipment, printing, and venue costs for all project teams.",
   walletAddress,
 }: Props) {
+  const addr = process.env.NEXT_PUBLIC_DONATION_ADDRESS;
+  const displayAddress = walletAddress || addr || "No address set";
   return (
     <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-[#0f1117] p-5 shadow-lg">
 
@@ -41,7 +48,7 @@ export default function CampaignHeroCard({
       <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0d12] px-3 py-2">
         <Wallet className="h-4 w-4 text-gray-400" />
         <span className="font-mono text-sm text-green-400">
-          {walletAddress}
+          {shortenAddress(displayAddress)}
         </span>
       </div>
     </div>
