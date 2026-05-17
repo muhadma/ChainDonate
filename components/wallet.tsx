@@ -3,10 +3,16 @@ import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 import { useState, useEffect, ChangeEvent } from "react";
 
 type WalletProps = {
-    onAddressChange: (address: string) => void;
+    onWalletChange: (wallet: MeshCardanoBrowserWallet | null, address: string) => void;
 };
 
-const Wallet = ({ onAddressChange }: WalletProps) => {
+export type WalletHandle = {
+  connectWallet: () => Promise<void>;
+  disconnect: () => void;
+  wallet: MeshCardanoBrowserWallet | null;
+};
+
+const Wallet = ({ onWalletChange }: WalletProps) => {
     const [availableWallets, setAvailableWallets] = useState<string[]>([]);
     const [selectedWallet, setSelectedWallet] = useState<string>("Disconnected");
     const [wallet, setWallet] = useState<MeshCardanoBrowserWallet | null>(null);
@@ -28,7 +34,7 @@ const Wallet = ({ onAddressChange }: WalletProps) => {
             setWallet(connected);
             const shortened = addr.slice(0, 10) + "..." + addr.slice(-6);
             setAddress(shortened);
-            onAddressChange(shortened);  // ← notify page.tsx
+            onWalletChange(connected, addr);
         } catch (error) {
             console.error("Error connecting to wallet:", error);
         }
@@ -38,7 +44,7 @@ const Wallet = ({ onAddressChange }: WalletProps) => {
         setWallet(null);
         setAddress("");
         setSelectedWallet("Disconnected");
-        onAddressChange("");  // ← clear address in page.tsx
+        onWalletChange(null, "");
     };
 
     const handleSelectedWalletChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -48,12 +54,18 @@ const Wallet = ({ onAddressChange }: WalletProps) => {
     // ── Connected state ──────────────────────────────────────────
     if (wallet && address) {
         return (
-            <button
-                onClick={disconnect}
-                className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-                Disconnect
-            </button>
+            <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-2 bg-[#1a1d27] border border-white/10 rounded-full px-4 py-1.5 text-sm font-mono text-green-400">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    {address}
+                </div>
+                <button
+                    onClick={disconnect}
+                    className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                >
+                    Disconnect
+                </button>
+            </div>
         );
     }
 
