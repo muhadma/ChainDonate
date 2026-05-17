@@ -12,8 +12,12 @@
     "@meshsdk/core": "^1.9.0-beta.102",
     "@meshsdk/react": "^2.0.0-beta.2",
     "@meshsdk/wallet": "^2.0.0-beta.9",
+    "@blockfrost/blockfrost-js": "^6.1.1",
+    "@prisma/client": "5",
+    "@supabase/supabase-js": "^2.105.4",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
+    "prisma": "5",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
