@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { PhilippinePeso, Users, Target } from 'lucide-react';
+import { Coins, Users, Target } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface DonationStats {
   totalRaised: number;
@@ -14,13 +16,53 @@ interface DonationStatsProps {
 }
 
 const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
-  // Fallback to mock data if no props are provided
 
-  const stats: DonationStats = data || {
-    totalRaised: 12450.50,
+  const [stats, setStats] = useState({
+    totalRaised: 0,
     goal: 20000,
-    donorCount: 142,
-  };
+    donorCount: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const res = await fetch("/api/transactions");
+      const data = await res.json();
+
+      const total = data.reduce(
+        (sum: number, d: any) => sum + Number(d.amountAda),
+        0
+      );
+
+      const donors = new Set(data.map((d: any) => d.address));
+
+      setStats({
+        totalRaised: total,
+        goal: 20000,
+        donorCount: donors.size,
+      });
+    };
+
+    fetchStats();
+
+    const channel = supabase
+      .channel("stats-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "transactions",
+        },
+        () => {
+          fetchStats(); // refresh stats instantly
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const progressPercentage = Math.min((stats.totalRaised / stats.goal) * 100, 100);
 
@@ -40,7 +82,7 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
     },
     grid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '16px',
       marginBottom: '24px'
     },
@@ -80,8 +122,8 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
       <div style={styles.grid}>
         <StatCard
           title="Total Raised"
-          value={`₱ ${stats.totalRaised.toLocaleString()}`}
-          icon={<PhilippinePeso color="#16a34a" />}
+          value={`₳ ${stats.totalRaised.toLocaleString()}`}
+          icon={<Coins color="#16a34a" />}
         />
         <StatCard
           title="Donors"
@@ -90,8 +132,8 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
         />
         <StatCard
           title="Goal Progress"
-          value={`${progressPercentage.toFixed(1)}%`}
-          icon={<Target color="#9333ea" />}
+          value={`₳ ${stats.totalRaised.toLocaleString()} / ₳ ${stats.goal.toLocaleString()}`}
+          icon={<Target color="#333fea" />}
         />
       </div>
 
@@ -99,7 +141,7 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
       <div style={styles.progressBarSection}>
         <div style={styles.progressLabel}>
           <span>Campaign Progress</span>
-          <span>₱{stats.totalRaised.toLocaleString()} / ₱{stats.goal.toLocaleString()}</span>
+          <span>₳{stats.totalRaised.toLocaleString()} / ₳{stats.goal.toLocaleString()}</span>
         </div>
         <div style={styles.barTrack}>
           <div style={{ ...styles.barFill, width: `${progressPercentage}%` }} />

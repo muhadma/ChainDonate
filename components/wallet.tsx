@@ -2,50 +2,95 @@
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 import { useState, useEffect, ChangeEvent } from "react";
 
-const Wallet = () => {
+type WalletProps = {
+    onWalletChange: (wallet: MeshCardanoBrowserWallet | null, address: string) => void;
+};
+
+export type WalletHandle = {
+  connectWallet: () => Promise<void>;
+  disconnect: () => void;
+  wallet: MeshCardanoBrowserWallet | null;
+};
+
+const Wallet = ({ onWalletChange }: WalletProps) => {
     const [availableWallets, setAvailableWallets] = useState<string[]>([]);
     const [selectedWallet, setSelectedWallet] = useState<string>("Disconnected");
     const [wallet, setWallet] = useState<MeshCardanoBrowserWallet | null>(null);
+    const [address, setAddress] = useState<string>("");
+
+    useEffect(() => {
+        const getAvailableWallets = async () => {
+            const wallets = await MeshCardanoBrowserWallet.getInstalledWallets();
+            setAvailableWallets(wallets.map(w => w.name));
+        };
+        getAvailableWallets();
+    }, []);
 
     const connectWallet = async () => {
         try {
             if (selectedWallet === "Disconnected") return;
-
-            const wallet = await MeshCardanoBrowserWallet.enable(selectedWallet);
-            console.log("Available Balance: ", await wallet.getBalanceMesh());
-            setWallet(wallet);
+            const connected = await MeshCardanoBrowserWallet.enable(selectedWallet);
+            const addr = await connected.getChangeAddressBech32();
+            setWallet(connected);
+            const shortened = addr.slice(0, 10) + "..." + addr.slice(-6);
+            setAddress(shortened);
+            onWalletChange(connected, addr);
         } catch (error) {
             console.error("Error connecting to wallet:", error);
         }
     };
 
-    useEffect(() => {
-        const getAvailableWallets = async () => {
-            const wallets = await MeshCardanoBrowserWallet.getInstalledWallets();
-            const walletNames = wallets.map(wallet => wallet.name);
-            setAvailableWallets(walletNames);
-        }
-
-        getAvailableWallets();
-    }, []);
+    const disconnect = () => {
+        setWallet(null);
+        setAddress("");
+        setSelectedWallet("Disconnected");
+        onWalletChange(null, "");
+    };
 
     const handleSelectedWalletChange = (e: ChangeEvent<HTMLSelectElement>) => {
         setSelectedWallet(e.target.value);
-        console.log(`Selected wallet: ${e.target.value}`);
     };
 
+    // ── Connected state ──────────────────────────────────────────
+    if (wallet && address) {
+        return (
+            <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-2 bg-[#1a1d27] border border-white/10 rounded-full px-4 py-1.5 text-sm font-mono text-green-400">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    {address}
+                </div>
+                <button
+                    onClick={disconnect}
+                    className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                >
+                    Disconnect
+                </button>
+            </div>
+        );
+    }
+
+    // ── Disconnected state ───────────────────────────────────────
     return (
-        <div>
-            <h1>Wallet Component</h1>
-            <select value={selectedWallet} onChange={handleSelectedWalletChange}  >
+        <div className="flex items-center gap-2">
+            <select
+                value={selectedWallet}
+                onChange={handleSelectedWalletChange}
+                className="bg-[#1a1d27] border border-white/10 text-sm text-gray-300 rounded-lg px-3 py-2 outline-none focus:border-green-500/50 transition-colors cursor-pointer"
+            >
                 <option value="Disconnected">Select Wallet</option>
                 {availableWallets.map((w, i) => (
                     <option key={i} value={w}>{w}</option>
                 ))}
             </select>
-            <button onClick={connectWallet}>Connect Wallet</button>
+            <button
+                onClick={connectWallet}
+                disabled={selectedWallet === "Disconnected"}
+                className="bg-green-500 hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+                Connect
+            </button>
         </div>
     );
-}
+};
 
 export default Wallet;

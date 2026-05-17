@@ -1,9 +1,13 @@
 "use client";
 
+import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 import { useState } from "react";
+import { sendLovelace } from "@/lib/transaction";
 
 interface DonateButtonProps {
-  onDonate?: (amount: number) => void;
+  wallet: MeshCardanoBrowserWallet | null;
+  fundAddress: string;
+  onDonate?: (amount: number, txHash: string) => void;
 }
 
 const PRESET_AMOUNTS = [0.1, 0.5, 1.0, 2.0];
@@ -27,18 +31,22 @@ function isConfirmable(val: string): boolean {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function DonateButton({ onDonate }: DonateButtonProps) {
+export default function DonateButton({ wallet, fundAddress, onDonate }: DonateButtonProps) {
   const [amount, setAmount] = useState<string>("0.5");
   const [selected, setSelected] = useState<number | null>(0.5);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
 
   const handlePreset = (value: number) => {
     setSelected(value);
     setAmount(value.toString());
     setConfirmed(false);
     setError(null);
+    setStatus("idle");
+    setTxHash(null);
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +65,18 @@ export default function DonateButton({ onDonate }: DonateButtonProps) {
   };
 
   const handleConfirm = async () => {
+    if (!wallet) {
+      setError("Wallet not connected");
+      return;
+    }
+
+    try {
+      await wallet.getChangeAddressBech32();
+    } catch (err) {
+      setError("⚠ Wallet is locked. Please unlock or reconnect your wallet.");
+      return;
+    }
+
     if (!isConfirmable(amount)) {
       setError("Enter a valid amount greater than 0");
       return;
@@ -64,21 +84,41 @@ export default function DonateButton({ onDonate }: DonateButtonProps) {
 
     setConfirming(true);
     setError(null);
+    setStatus("idle");
 
-    // This is just a fake wait — no real tx happens 
-    // CHANGE THIS SECTION for real TX !!!!!
     try {
-      // ─────────────────────────────────────────────────────────────
-      // TODO (backend)
-      // ─────────────────────────────────────────────────────────────
-      await new Promise((res) => setTimeout(res, 1200));
+      const lovelace = Math.floor(parseFloat(amount) * 1_000_000).toString();
 
+      const txHash = await sendLovelace(wallet, {
+        address: fundAddress,
+        amount: lovelace,
+      });
+
+      await fetch("/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          txHash,
+          address: await wallet.getChangeAddressBech32(),
+          amount: parseFloat(amount),
+        }),
+      });
+
+      setTxHash(txHash);
+      setStatus("success");
       setConfirmed(true);
-      onDonate?.(parseFloat(amount));
+
+      onDonate?.(parseFloat(amount), txHash);
+
       setTimeout(() => setConfirmed(false), 3000);
 
     } catch (err: any) {
-      setError(err?.message ?? "Transaction failed. Please try again.");
+      console.error(err);
+      setStatus("error");
+      setError(err?.message ?? "Transaction failed");
+
     } finally {
       setConfirming(false);
     }
@@ -208,8 +248,22 @@ export default function DonateButton({ onDonate }: DonateButtonProps) {
           >
             {value.toFixed(1)} ADA
           </button>
+
         ))}
       </div>
+      {status === "success" && txHash && (
+        <div className="mt-3 text-xs text-green-400 break-all">
+          ✅ Donation successful!<br />
+          TX Hash:<br />
+          {txHash}
+        </div>
+      )}
+
+      {status === "error" && error && (
+        <div className="mt-3 text-xs text-red-400">
+          ❌ {error}
+        </div>
+      )}
     </div>
   );
 }
