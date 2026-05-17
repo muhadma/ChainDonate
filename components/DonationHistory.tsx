@@ -1,6 +1,7 @@
 "use client";
-
+import { timeAgoFrom, colorFromAddr, initialsFromAddress } from "@/lib/formatter";
 import { useState } from "react";
+import { useEffect } from "react";
 
 // Types 
 
@@ -14,65 +15,7 @@ interface Donation {
   avatarColor: string;
   avatarInitials: string;
 }
-
-// ── Mock Data ────────────────────────────────────────────────────────────────
-
-const DONATIONS: Donation[] = [
-  {
-    id: "1",
-    address: "addr1q...a3f9",
-    amount: 8.5,
-    timeAgo: "Just now",
-    txHash: "tx: a9fe...c1d8",
-    avatarColor: "#4f8ef7",
-    avatarInitials: "a7",
-  },
-  {
-    id: "2",
-    address: "addr1q...k7e1",
-    amount: 1.0,
-    timeAgo: "2 minutes ago",
-    txHash: "tx: 3f6c...c1d8",
-    avatarColor: "#38b2ac",
-    avatarInitials: "b7",
-  },
-  {
-    id: "3",
-    address: "addr1q...c1d8",
-    amount: 8.25,
-    timeAgo: "1 hour ago",
-    txHash: "tx: d812...c6e8",
-    avatarColor: "#e07b39",
-    avatarInitials: "c4",
-  },
-  {
-    id: "4",
-    address: "addr1q...f2a1",
-    amount: 2.0,
-    timeAgo: "3 hours ago",
-    txHash: "tx: 7c3b...a1f2",
-    avatarColor: "#9f7aea",
-    avatarInitials: "d2",
-  },
-  {
-    id: "5",
-    address: "addr1q...b9c3",
-    amount: 5.0,
-    timeAgo: "5 hours ago",
-    txHash: "tx: 2e9d...b3c4",
-    avatarColor: "#48bb78",
-    avatarInitials: "e5",
-  },
-  {
-    id: "6",
-    address: "addr1q...e4d7",
-    amount: 0.5,
-    timeAgo: "1 day ago",
-    txHash: "tx: 8f1a...d7e4",
-    avatarColor: "#f6ad55",
-    avatarInitials: "f9",
-  },
-];
+ 
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -186,9 +129,41 @@ function DonationRow({ donation }: { donation: Donation }) {
 
 export default function DonationHistory() {
   const [filter, setFilter] = useState<"all" | "recent">("all");
+  const [donations, setDonations] = useState<Donation[]>([]);
+
+  useEffect(() => {
+    const fetchDonations = async () => {
+      try {
+        const res = await fetch("/api/transactions");
+        const data = await res.json();
+
+        console.log("RAW DATA:", data);
+        
+        const mapped: Donation[] = data.map((d: any) => ({
+          id: d.id,
+          address: d.address,
+          amount: Number(d.amountAda),
+          timeAgo: timeAgoFrom(d.createdAt),
+          txHash: d.txHash,
+          avatarColor: colorFromAddr(d.address),
+          avatarInitials: initialsFromAddress(d.address),
+        }));
+
+        setDonations(mapped);
+      } catch (err) {
+        console.error("Failed to fetch donations", err);
+      }
+    };
+
+    fetchDonations();
+
+    const interval = setInterval(fetchDonations, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const filtered =
-    filter === "recent" ? DONATIONS.slice(0, 3) : DONATIONS;
+    filter === "recent" ? donations.slice(0, 3) : donations;
 
   return (
     <div
@@ -291,7 +266,7 @@ export default function DonationHistory() {
           }}
         >
           <span style={{ fontSize: 11, color: "#475569" }}>
-            {DONATIONS.length} transactions total
+            {donations.length} transactions total
           </span>
           <span
             style={{
@@ -300,7 +275,7 @@ export default function DonationHistory() {
               color: "#4ade80",
             }}
           >
-            {DONATIONS.reduce((s, d) => s + d.amount, 0).toFixed(2)}{" "}
+            {donations.reduce((s, d) => s + d.amount, 0).toFixed(2)}{" "}
             <span style={{ fontSize: 10, opacity: 0.8 }}>₳</span> raised
           </span>
         </div>
