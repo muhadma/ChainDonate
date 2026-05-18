@@ -130,9 +130,9 @@ export default function RegisterCampaignModal({
           <button 
             disabled={isSubmitting} 
             type="submit" 
-            className="w-full py-3 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Broadcasting to DB..." : "Deploy Campaign Listing"}
+            className="w-full py-3 mt-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-xl font-semibold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20"
+            >
+            {isSubmitting ? "Registering..." : "Register Campaign"}
           </button>
         </form>
 

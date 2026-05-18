@@ -23,10 +23,10 @@ export default function CampaignDashboard({
           Active Campaigns
         </h2>
         <button
-          onClick={onOpenRegister}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-medium transition shadow-md shadow-indigo-600/10"
-        >
-          + Register Campaign
+            onClick={onOpenRegister}
+            className="px-4 py-2 bg-gradient-to-r bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium transition shadow-md shadow-emerald-900/20 text-white"
+            >
+            + Register Campaign
         </button>
       </div>
 

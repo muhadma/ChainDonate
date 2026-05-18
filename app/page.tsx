@@ -79,9 +79,9 @@ export default function Home() {
       {/* Top Utilities Navbar */}
       <div className="w-full max-w-6xl flex justify-between items-center border-b border-white/5 pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-green-500 bg-clip-text text-transparent">
             ChainDonate Tracker
-          </h1>
+          </h1> 
           <p className="text-xs text-gray-400">Cardano Decentralized Crowdfunding</p>
         </div>
         <Wallet onWalletChange={(wallet, addr) => { setWallet(wallet); setAddress(addr); }} />
