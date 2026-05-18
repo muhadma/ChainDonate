@@ -1,16 +1,7 @@
 "use client";
 
 import React from "react";
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  targetAddress: string;
-  goal: number;
-  isVerified: boolean;
-  treasuryEnabled: boolean;
-}
+import { Campaign } from "./types"; 
 
 interface CampaignDashboardProps {
   campaigns: Campaign[];
