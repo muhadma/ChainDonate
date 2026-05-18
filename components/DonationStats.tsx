@@ -1,178 +1,127 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Coins, Users, Target } from 'lucide-react';
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-interface DonationStats {
-  totalRaised: number;
-  goal: number;
-  donorCount: number;
-}
-
 interface DonationStatsProps {
-  data?: DonationStats;
+  campaignAddress: string;
+  goal: number;
 }
 
-const DonationStatsComponent: React.FC<DonationStatsProps> = ({ data }) => {
-
+const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress, goal }) => {
   const [stats, setStats] = useState({
     totalRaised: 0,
-    goal: 20000,
     donorCount: 0,
   });
 
   useEffect(() => {
+    if (!campaignAddress) return;
+
     const fetchStats = async () => {
-      const res = await fetch("/api/transactions");
-      const data = await res.json();
+      // Query transactions that match this campaign's target wallet address
+      const { data: transactions, error: txError } = await supabase
+        .from("transactions")
+        .select("address, amount")
+        .eq("address", campaignAddress);
 
-      const total = data.reduce(
-        (sum: number, d: any) => sum + Number(d.amountAda),
-        0
+      if (txError) {
+        console.error("Failed to fetch transactions:", txError);
+        return;
+      }
+
+      const total = (transactions ?? []).reduce(
+        (sum, d) => sum + Number(d.amount), 0
       );
-
-      const donors = new Set(data.map((d: any) => d.address));
+      
+      // Counting unique donor address fingerprints if your transactions store the sender profile
+      const donors = new Set((transactions ?? []).map((d) => d.address));
 
       setStats({
         totalRaised: total,
-        goal: 20000,
         donorCount: donors.size,
       });
     };
 
     fetchStats();
 
+    // Listen for incoming on-chain transactions pushed to this wallet address
     const channel = supabase
-      .channel("stats-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "transactions",
-        },
-        () => {
-          fetchStats(); // refresh stats instantly
-        }
-      )
+      .channel(`stats-realtime-${campaignAddress}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "transactions",
+        filter: `address=eq.${campaignAddress}`,
+      }, () => fetchStats())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    return () => { supabase.removeChannel(channel); };
+  }, [campaignAddress]);
 
-  const progressPercentage = Math.min((stats.totalRaised / stats.goal) * 100, 100);
-
-  const styles = {
-    wrapper: {
-      padding: '20px',
-      backgroundColor: '#0f1117',
-      borderRadius: '16px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#ffffff'
-    },
-    title: {
-      fontSize: '22px',
-      fontWeight: '700',
-      color: '#ffffff',
-      marginBottom: '20px'
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, 1fr)',
-      gap: '16px',
-      marginBottom: '24px'
-    },
-    progressBarSection: {
-      backgroundColor: '#1a1d27',
-      padding: '20px',
-      borderRadius: '12px',
-      border: '1px solid #2d313e',
-    },
-    barTrack: {
-      width: '100%',
-      backgroundColor: '#2d313e',
-      borderRadius: '10px',
-      height: '10px',
-      marginTop: '12px'
-    },
-    barFill: {
-      backgroundColor: '#22c55e',
-      height: '100%',
-      borderRadius: '10px',
-      transition: 'width 0.6s ease-in-out'
-    },
-    progressLabel: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      fontSize: '13px',
-      fontWeight: '600',
-      color: '#94a3b8'
-    }
-  };
+  const progressPercentage = goal > 0
+    ? Math.min((stats.totalRaised / goal) * 100, 100)
+    : 0;
 
   return (
-    <div style={styles.wrapper}>
-      <h2 style={styles.title}>Donation Statistics</h2>
+    <div className="w-full space-y-6">
+      <h2 className="text-xl font-bold text-white tracking-wide">Donation Statistics</h2>
 
-      {/* Metric Cards */}
-      <div style={styles.grid}>
+      {/* Stats Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Total Raised"
           value={`₳ ${stats.totalRaised.toLocaleString()}`}
-          icon={<Coins color="#16a34a" />}
+          icon={<Coins className="h-5 w-5 text-emerald-400" />}
         />
         <StatCard
           title="Donors"
           value={stats.donorCount.toString()}
-          icon={<Users color="#2563eb" />}
+          icon={<Users className="h-5 w-5 text-blue-400" />}
         />
         <StatCard
           title="Goal Progress"
-          value={`₳ ${stats.totalRaised.toLocaleString()} / ₳ ${stats.goal.toLocaleString()}`}
-          icon={<Target color="#333fea" />}
+          value={`₳ ${stats.totalRaised.toLocaleString()} / ₳ ${goal.toLocaleString()}`}
+          icon={<Target className="h-5 w-5 text-indigo-400" />}
         />
       </div>
 
       {/* Progress Bar Container */}
-      <div style={styles.progressBarSection}>
-        <div style={styles.progressLabel}>
+      <div className="bg-[#1a1d27] border border-white/5 p-5 rounded-xl space-y-3">
+        <div className="flex justify-between items-center text-xs sm:text-sm font-semibold text-gray-400">
           <span>Campaign Progress</span>
-          <span>₳{stats.totalRaised.toLocaleString()} / ₳{stats.goal.toLocaleString()}</span>
+          <span className="font-mono text-indigo-400">
+            {progressPercentage.toFixed(1)}% Completed
+          </span>
         </div>
-        <div style={styles.barTrack}>
-          <div style={{ ...styles.barFill, width: `${progressPercentage}%` }} />
+        <div className="w-full bg-[#2d313e] rounded-full h-2.5 overflow-hidden">
+          <div 
+            className="bg-emerald-500 h-full rounded-full transition-all duration-500 ease-out" 
+            style={{ width: `${progressPercentage}%` }}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-const StatCard = ({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) => (
-  <div style={{
-    backgroundColor: '#1a1d27',
-    padding: '18px',
-    borderRadius: '12px',
-    border: '1px solid #2d313e',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  }}>
-    <div>
-      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 4px 0', fontWeight: '500' }}>{title}</p>
-      <p style={{ fontSize: '18px', fontWeight: '800', color: '#ffffff', margin: 0 }}>{value}</p>
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
+  <div className="bg-[#1a1d27] p-4.5 rounded-xl border border-white/5 flex justify-between items-center transition hover:border-white/10">
+    <div className="space-y-1 min-w-0">
+      <p className="text-xs font-medium text-gray-400 tracking-wide uppercase">
+        {title}
+      </p>
+      <p className="text-lg font-bold text-white font-mono truncate">
+        {value}
+      </p>
     </div>
-    <div style={{
-      backgroundColor: '#2d313e',
-      padding: '8px',
-      borderRadius: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
+    <div className="bg-[#2d313e] p-2.5 rounded-xl flex items-center justify-center flex-shrink-0">
       {icon}
     </div>
   </div>

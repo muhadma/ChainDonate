@@ -1,39 +1,34 @@
 "use client";
 
+import React, { useState } from "react";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
-import { useState } from "react";
 import { sendLovelace } from "@/lib/transaction";
+import { supabase } from "@/lib/supabase";
 
 interface DonateButtonProps {
   wallet: MeshCardanoBrowserWallet | null;
-  fundAddress: string;
+  fundAddress: string; // This is the campaign's target address passed from the modal
   onDonate?: (amount: number, txHash: string) => void;
 }
 
-const PRESET_AMOUNTS = [0.1, 0.5, 1.0, 2.0];
-
-// ── Validation ───────────────────────────────────────────────────────────────
+const PRESET_AMOUNTS = [1.0, 2.0, 5.0, 10.0];
+const MIN_ADA_REQUIRED = 1.0;
 
 function isValidAmountInput(val: string): boolean {
-  // Allow empty string (user clearing input)
   if (val === "") return true;
-  // Allow digits with optional single decimal point
   if (!/^\d*\.?\d*$/.test(val)) return false;
-  // Prevent leading zeros like "007" (but allow "0" and "0.5")
   if (/^0\d/.test(val)) return false;
   return true;
 }
 
 function isConfirmable(val: string): boolean {
   const parsed = parseFloat(val);
-  return !isNaN(parsed) && parsed > 0 && isFinite(parsed);
+  return !isNaN(parsed) && parsed >= MIN_ADA_REQUIRED && isFinite(parsed);
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
-
 export default function DonateButton({ wallet, fundAddress, onDonate }: DonateButtonProps) {
-  const [amount, setAmount] = useState<string>("0.5");
-  const [selected, setSelected] = useState<number | null>(0.5);
+  const [amount, setAmount] = useState<string>("1.0");
+  const [selected, setSelected] = useState<number | null>(1.0);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,14 +46,13 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    if (!isValidAmountInput(val)) return; // silently reject invalid chars
+    if (!isValidAmountInput(val)) return;
     setSelected(null);
     setConfirmed(false);
     setAmount(val);
 
-    // Show error only if user has typed something non-empty but invalid
-    if (val !== "" && !isConfirmable(val)) {
-      setError("Enter a valid amount greater than 0");
+    if (val !== "" && parseFloat(val) < MIN_ADA_REQUIRED) {
+      setError(`Minimum donation is ${MIN_ADA_REQUIRED} ADA to prevent network UTXO dust rejections.`);
     } else {
       setError(null);
     }
@@ -70,15 +64,17 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
       return;
     }
 
-    try {
-      await wallet.getChangeAddressBech32();
-    } catch (err) {
-      setError("⚠ Wallet is locked. Please unlock or reconnect your wallet.");
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount < MIN_ADA_REQUIRED) {
+      setError(`Transaction blocked: Amount must be at least ${MIN_ADA_REQUIRED} ADA.`);
       return;
     }
 
-    if (!isConfirmable(amount)) {
-      setError("Enter a valid amount greater than 0");
+    try {
+      // Ensure wallet is unlocked before generating payload
+      await wallet.getChangeAddressBech32();
+    } catch (err) {
+      setError("⚠ Wallet is locked. Please unlock or reconnect your wallet.");
       return;
     }
 
@@ -87,181 +83,118 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
     setStatus("idle");
 
     try {
-      const lovelace = Math.floor(parseFloat(amount) * 1_000_000).toString();
+      const lovelace = Math.floor(parsedAmount * 1_000_000).toString();
 
-      const txHash = await sendLovelace(wallet, {
+      // Submit direct peer-to-peer payload via Mesh SDK to the destination wallet
+      const minedTxHash = await sendLovelace(wallet, {
         address: fundAddress,
         amount: lovelace,
       });
 
-      await fetch("/api/transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          txHash,
-          address: await wallet.getChangeAddressBech32(),
-          amount: parseFloat(amount),
-        }),
-      });
+      // Insert transaction history straight into Supabase using the campaign's address
+      const { error: dbError } = await supabase
+        .from("transactions")
+        .insert([
+          {
+            tx_hash: minedTxHash,
+            address: fundAddress, // Maps perfectly to your transaction schema's address column
+            amount: parsedAmount,
+          },
+        ]);
 
-      setTxHash(txHash);
+      if (dbError) throw dbError;
+
+      setTxHash(minedTxHash);
       setStatus("success");
       setConfirmed(true);
 
-      onDonate?.(parseFloat(amount), txHash);
-
+      onDonate?.(parsedAmount, minedTxHash);
       setTimeout(() => setConfirmed(false), 3000);
 
     } catch (err: any) {
-      console.error(err);
+      console.error("Cardano Pipeline Failure:", err);
       setStatus("error");
-      setError(err?.message ?? "Transaction failed");
 
+      if (err?.message?.includes("BabbageOutputTooSmallUTxO")) {
+        setError("Cardano Ledger Exception: Target amount is below the network's protocol dust limits.");
+      } else {
+        setError(err?.message ?? "Transaction payload writing failed");
+      }
     } finally {
       setConfirming(false);
     }
   };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        backgroundColor: "#161b27",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.07)",
-        padding: "18px 20px",
-        boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
-        fontFamily: "'JetBrains Mono', monospace",
-        boxSizing: "border-box",
-      }}
-    >
+    <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-3">
+      
       {/* Label */}
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: "#cbd5e1",
-          marginBottom: 12,
-          letterSpacing: "0.01em",
-        }}
-      >
+      <div className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide">
         Make a donation
       </div>
 
       {/* Input Row */}
-      <div style={{ display: "flex", gap: 8, marginBottom: error ? 6 : 12 }}>
+      <div className="flex gap-2">
         <input
           type="text"
           inputMode="decimal"
           value={amount}
           onChange={handleInput}
           placeholder="0.0"
-          style={{
-            flex: 1,
-            backgroundColor: "#0f1117",
-            border: `1px solid ${error ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.1)"}`,
-            borderRadius: 8,
-            color: "#e2e8f0",
-            fontSize: 14,
-            fontWeight: 600,
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: "10px 14px",
-            outline: "none",
-            transition: "border-color 0.15s ease",
-          }}
-          onFocus={(e) =>
-          (e.target.style.borderColor = error
-            ? "rgba(248,113,113,0.7)"
-            : "rgba(74,222,128,0.4)")
-          }
-          onBlur={(e) =>
-          (e.target.style.borderColor = error
-            ? "rgba(248,113,113,0.5)"
-            : "rgba(255,255,255,0.1)")
-          }
+          className={`flex-1 bg-[#0f1117] rounded-lg text-sm font-semibold font-mono p-2.5 px-3.5 text-slate-200 outline-none transition duration-150 ${
+            error 
+              ? "border border-red-500/50 focus:border-red-500/70" 
+              : "border border-white/10 focus:border-emerald-500/40"
+          }`}
         />
 
         <button
           onClick={handleConfirm}
           disabled={!isConfirmable(amount) || confirming}
-          style={{
-            backgroundColor: confirmed ? "#166534" : confirming ? "#14532d" : "#16a34a",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: "10px 16px",
-            cursor: !isConfirmable(amount) || confirming ? "not-allowed" : "pointer",
-            opacity: !isConfirmable(amount) ? 0.5 : 1,
-            transition: "background-color 0.2s ease, opacity 0.2s ease",
-            whiteSpace: "nowrap",
-            letterSpacing: "0.02em",
-          }}
+          className={`text-white border-none rounded-lg text-xs sm:text-sm font-bold font-mono p-2.5 px-4 whitespace-nowrap tracking-wide transition-all duration-200 ${
+            confirmed 
+              ? "bg-green-800 cursor-default" 
+              : confirming 
+                ? "bg-green-900 cursor-not-allowed" 
+                : !isConfirmable(amount)
+                  ? "bg-emerald-600 opacity-50 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
+          }`}
         >
           {confirming ? "Sending..." : confirmed ? "✓ Sent!" : "Confirm donation"}
         </button>
       </div>
 
-      {/* Inline validation error */}
+      {/* Inline validation error info */}
       {error && (
-        <div
-          style={{
-            fontSize: 11,
-            color: "#f87171",
-            marginBottom: 10,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.01em",
-          }}
-        >
+        <div className="text-[11px] text-red-400 tracking-wide leading-relaxed">
           ⚠ {error}
         </div>
       )}
 
-      {/* Preset Buttons */}
-      <div style={{ display: "flex", gap: 8 }}>
+      {/* Preset Amount Grid Utilities */}
+      <div className="flex gap-2 w-full">
         {PRESET_AMOUNTS.map((value) => (
           <button
             key={value}
             onClick={() => handlePreset(value)}
-            style={{
-              flex: 1,
-              backgroundColor:
-                selected === value ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)",
-              border:
-                selected === value
-                  ? "1px solid rgba(74,222,128,0.4)"
-                  : "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 7,
-              color: selected === value ? "#4ade80" : "#94a3b8",
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: "'JetBrains Mono', monospace",
-              padding: "7px 0",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-              letterSpacing: "0.02em",
-            }}
+            className={`flex-1 rounded-md text-[11px] font-semibold font-mono py-2 transition duration-150 tracking-wide border cursor-pointer ${
+              selected === value
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
+                : "bg-white/5 border-white/[0.08] text-slate-400 hover:text-slate-300 hover:bg-white/10"
+            }`}
           >
             {value.toFixed(1)} ADA
           </button>
-
         ))}
       </div>
-      {status === "success" && txHash && (
-        <div className="mt-3 text-xs text-green-400 break-all">
-          ✅ Donation successful!<br />
-          TX Hash:<br />
-          {txHash}
-        </div>
-      )}
 
-      {status === "error" && error && (
-        <div className="mt-3 text-xs text-red-400">
-          ❌ {error}
+      {/* Hash Receipts Feed */}
+      {status === "success" && txHash && (
+        <div className="mt-3 text-[11px] text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 p-3 rounded-lg space-y-1 break-all">
+          <div className="font-bold">✅ Donation successful!</div>
+          <div className="text-slate-400 text-[10px]">TX Hash:</div>
+          <div className="select-all font-mono text-[10px] bg-black/30 p-1.5 rounded border border-white/5">{txHash}</div>
         </div>
       )}
     </div>

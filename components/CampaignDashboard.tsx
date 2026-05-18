@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Campaign } from "./types"; 
+import { Campaign } from "./types";
 
 interface CampaignDashboardProps {
   campaigns: Campaign[];

@@ -6,8 +6,6 @@ import DonateButton from "./DonateButton";
 import DonationStatsComponent from "./DonationStats";
 import DonationHistory from "./DonationHistory";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
-
-// Import Campaign interface from your types file
 import { Campaign } from "./types"; 
 
 interface CampaignModalProps {
@@ -48,7 +46,7 @@ export default function CampaignModal({ campaign, isOpen, onClose, wallet }: Cam
           </button>
         </div>
 
-        {/* Scrollable Main Content */}
+        {/* Scrollable Main Content Areas */}
         <div className="overflow-y-auto p-6 space-y-8 flex-1">
           <CampaignHeroCard 
             title={campaign.title} 
