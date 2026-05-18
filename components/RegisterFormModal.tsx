@@ -1,0 +1,156 @@
+"use client";
+
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+interface RegisterCampaignModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export default function RegisterCampaignModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: RegisterCampaignModalProps) {
+  // Localized form states
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [targetAddress, setTargetAddress] = useState("");
+  const [goal, setGoal] = useState("1000");
+  const [treasuryEnabled, setTreasuryEnabled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !description || !targetAddress || !goal) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from("campaigns").insert([
+        {
+          title,
+          description,
+          target_address: targetAddress,
+          goal: parseFloat(goal),
+          treasury_enabled: treasuryEnabled,
+          is_verified: false, // Defaulting to unverified initially
+        },
+      ]);
+
+      if (error) throw error;
+
+      // Reset form options
+      setTitle("");
+      setDescription("");
+      setTargetAddress("");
+      setGoal("1000");
+      setTreasuryEnabled(false);
+      
+      // Trigger callback functions
+      onSuccess(); // Triggers dashboard fetch
+      onClose();   // Closes this modal view
+    } catch (err) {
+      console.error("Error creating campaign record:", err);
+      alert("Failed to submit campaign details. Check console logs.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-[#141722] border border-white/10 w-full max-w-lg rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        {/* Modal Header */}
+        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0f1117]">
+          <span className="text-sm font-semibold text-gray-200">Register New Cardano Campaign</span>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-white text-xs bg-white/5 px-2 py-1 rounded transition"
+          >
+            ✕ Close
+          </button>
+        </div>
+        
+        {/* Modal Form Content */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm font-mono">
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400 block">Campaign Title</label>
+            <input 
+              required 
+              type="text" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              placeholder="e.g., Department Showcase 2026" 
+              className="w-full bg-[#0f1117] border border-white/10 rounded-lg p-2.5 outline-none text-gray-200 focus:border-indigo-500" 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400 block">Campaign Description</label>
+            <textarea 
+              required 
+              rows={3} 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Provide short details about the use of funding..." 
+              className="w-full bg-[#0f1117] border border-white/10 rounded-lg p-2.5 outline-none text-gray-200 focus:border-indigo-500 resize-none font-sans" 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400 block">Target Cardano Address</label>
+            <input 
+              required 
+              type="text" 
+              value={targetAddress} 
+              onChange={(e) => setTargetAddress(e.target.value)} 
+              placeholder="addr_test1..." 
+              className="w-full bg-[#0f1117] border border-white/10 rounded-lg p-2.5 outline-none text-gray-200 focus:border-indigo-500 text-xs" 
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400 block">Funding Goal (ADA)</label>
+            <input 
+              required 
+              type="number" 
+              min="1" 
+              value={goal} 
+              onChange={(e) => setGoal(e.target.value)} 
+              className="w-full bg-[#0f1117] border border-white/10 rounded-lg p-2.5 outline-none text-gray-200 focus:border-indigo-500" 
+            />
+          </div>
+
+          {/* Treasury Option Feature Option */}
+          <div className="bg-[#0f1117] border border-white/5 rounded-xl p-3 flex items-start gap-3 mt-2">
+            <input 
+              type="checkbox" 
+              id="treasury" 
+              checked={treasuryEnabled} 
+              onChange={(e) => setTargetAddress && setTreasuryEnabled(e.target.checked)} 
+              className="mt-1 accent-indigo-500 h-4 w-4 rounded cursor-pointer" 
+            />
+            <label htmlFor="treasury" className="text-xs text-gray-400 cursor-pointer select-none leading-relaxed">
+              <span className="text-amber-400 font-semibold block mb-0.5">Enable Safety Treasury Protection</span>
+              Automatically attach a protocol option where <strong className="text-white">1 ₳</strong> is contributed to a safety fund buffer, executing secure asset distribution routines as time approaches expiration.
+            </label>
+          </div>
+
+          <button 
+            disabled={isSubmitting} 
+            type="submit" 
+            className="w-full py-3 mt-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? "Broadcasting to DB..." : "Deploy Campaign Listing"}
+          </button>
+        </form>
+
+      </div>
+    </div>
+  );
+}
