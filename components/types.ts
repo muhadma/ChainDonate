@@ -11,7 +11,7 @@ export interface Campaign {
 export interface Transaction {
   id: string;
   tx_hash: string;
-  address: string; 
+  address: string;
   amount: number;
   created_at: string;
 }
