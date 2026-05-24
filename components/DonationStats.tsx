@@ -7,9 +7,16 @@ import { supabase } from "@/lib/supabase";
 interface DonationStatsProps {
   campaignAddress: string;
   goal: number;
+  onTotalRaisedChange?: (amount: number) => void;
+  onDonationCountChange?: (count: number) => void;
 }
 
-const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress, goal }) => {
+const DonationStatsComponent: React.FC<DonationStatsProps> = ({
+  campaignAddress,
+  goal,
+  onTotalRaisedChange,
+  onDonationCountChange,
+}) => {
   const [stats, setStats] = useState({
     totalRaised: 0,
     donorCount: 0,
@@ -19,7 +26,6 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress,
     if (!campaignAddress) return;
 
     const fetchStats = async () => {
-      // Query transactions that match this campaign's target wallet address
       const { data: transactions, error: txError } = await supabase
         .from("transactions")
         .select("address, amount")
@@ -31,21 +37,22 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress,
       }
 
       const total = (transactions ?? []).reduce(
-        (sum, d) => sum + Number(d.amount), 0
+        (sum: number, d: any) => sum + Number(d.amount), 0
       );
-      
-      // Counting unique donor address fingerprints if your transactions store the sender profile
-      const donors = new Set((transactions ?? []).map((d) => d.address));
+
+      const donors = new Set((transactions ?? []).map((d: any) => d.address));
 
       setStats({
         totalRaised: total,
         donorCount: donors.size,
       });
+
+      onTotalRaisedChange?.(total);
+      onDonationCountChange?.(donors.size);
     };
 
     fetchStats();
 
-    // Listen for incoming on-chain transactions pushed to this wallet address
     const channel = supabase
       .channel(`stats-realtime-${campaignAddress}`)
       .on("postgres_changes", {
@@ -67,7 +74,6 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress,
     <div className="w-full space-y-6">
       <h2 className="text-xl font-bold text-white tracking-wide">Donation Statistics</h2>
 
-      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Total Raised"
@@ -86,20 +92,32 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({ campaignAddress,
         />
       </div>
 
-      {/* Progress Bar Container */}
       <div className="bg-[#1a1d27] border border-white/5 p-5 rounded-xl space-y-3">
         <div className="flex justify-between items-center text-xs sm:text-sm font-semibold text-gray-400">
           <span>Campaign Progress</span>
-          <span className="font-mono text-indigo-400">
+          <span
+            className={`text-xs font-mono font-semibold ${
+              progressPercentage >= 100 ? 'text-amber-400' : 'text-emerald-400'
+            }`}
+          >
             {progressPercentage.toFixed(1)}% Completed
           </span>
         </div>
         <div className="w-full bg-[#2d313e] rounded-full h-2.5 overflow-hidden">
-          <div 
-            className="bg-emerald-500 h-full rounded-full transition-all duration-500 ease-out" 
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              progressPercentage >= 100 ? 'bg-amber-400' : 'bg-emerald-500'
+            }`}
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
+        {progressPercentage >= 100 && (
+          <div className="flex justify-center pt-1">
+            <span className="text-xs font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+              Goal Reached
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
