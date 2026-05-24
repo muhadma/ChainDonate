@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Campaign } from "./types";
+import StatusBadge from "./StatusBadge";
 
 interface CampaignDashboardProps {
   campaigns: Campaign[];
@@ -52,11 +53,7 @@ export default function CampaignDashboard({
                     {campaign.title}
                   </h3>
                   <div className="flex gap-1.5 flex-shrink-0">
-                    {campaign.isVerified && (
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                        Verified
-                      </span>
-                    )}
+                    <StatusBadge status={campaign.isVerified ? "VERIFIED" : "PENDING"} />
                     {campaign.treasuryEnabled && (
                       <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
                         Treasury

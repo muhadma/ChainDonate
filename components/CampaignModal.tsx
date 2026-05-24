@@ -6,7 +6,8 @@ import DonateButton from "./DonateButton";
 import DonationStatsComponent from "./DonationStats";
 import DonationHistory from "./DonationHistory";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
-import { Campaign } from "./types"; 
+import { Campaign } from "./types";
+import StatusBadge from "./StatusBadge";
 
 interface CampaignModalProps {
   campaign: Campaign | null;
@@ -32,11 +33,7 @@ export default function CampaignModal({ campaign, isOpen, onClose, wallet }: Cam
             <span className="text-xs uppercase tracking-wider font-semibold text-indigo-400 px-2 py-1 bg-indigo-500/10 rounded">
               Campaign Detail View
             </span>
-            {campaign.isVerified && (
-              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-                ✓ Verified Legit
-              </span>
-            )}
+            <StatusBadge status={campaign.isVerified ? "VERIFIED" : "PENDING"} />
           </div>
           <button 
             onClick={onClose} 
