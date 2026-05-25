@@ -8,7 +8,6 @@ interface ArchivedCampaignProps {
 }
 
 export default function ArchivedCampaign({
-  campaignTitle,
   totalRaised,
   donationCount,
   explorerUrl,

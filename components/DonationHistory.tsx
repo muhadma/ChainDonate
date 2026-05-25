@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { timeAgoFrom, colorFromAddr, initialsFromAddress } from "@/lib/formatter";
 import { supabase } from "@/lib/supabase";
 

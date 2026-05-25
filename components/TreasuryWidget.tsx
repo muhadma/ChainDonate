@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { DollarSign, TrendingUp } from "lucide-react";
 
 interface TreasuryWidgetProps {

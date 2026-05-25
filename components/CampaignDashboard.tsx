@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Campaign } from "./types";
 import StatusBadge from "./StatusBadge";
 
