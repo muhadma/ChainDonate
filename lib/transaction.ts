@@ -4,40 +4,40 @@ import type { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 const apiKey = process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID;
 
 if (!apiKey) {
-    throw new Error(
-        "Blockfrost API key is not defined in environment variables.",
-    );
+  throw new Error(
+    "Blockfrost API key is not defined in environment variables."
+  );
 }
 
 const provider = new BlockfrostProvider(apiKey);
 
 export type Recipient = {
-    address: string;
-    amount: string;
+  address: string;
+  amount: string;
 };
 
 export const sendLovelace = async (
-    wallet: MeshCardanoBrowserWallet,
-    recipient: Recipient,
+  wallet: MeshCardanoBrowserWallet,
+  recipient: Recipient
 ): Promise<string> => {
-    const txBuilder = new MeshTxBuilder({
-        fetcher: provider,
-        verbose: true,
-    });
+  const txBuilder = new MeshTxBuilder({
+    fetcher: provider,
+    verbose: true,
+  });
 
-    const utxos = await wallet.getUtxosMesh();
-    const changeAddress = await wallet.getChangeAddressBech32();
+  const utxos = await wallet.getUtxosMesh();
+  const changeAddress = await wallet.getChangeAddressBech32();
 
-    const unsignedTx = await txBuilder
-        .txOut(recipient.address, [
-            { unit: "lovelace", quantity: recipient.amount },
-        ])
-        .changeAddress(changeAddress)
-        .selectUtxosFrom(utxos)
-        .complete();
+  const unsignedTx = await txBuilder
+    .txOut(recipient.address, [
+      { unit: "lovelace", quantity: recipient.amount },
+    ])
+    .changeAddress(changeAddress)
+    .selectUtxosFrom(utxos)
+    .complete();
 
-    const signedTx = await wallet.signTxReturnFullTx(unsignedTx);
-    const txHash = await wallet.submitTx(signedTx);
+  const signedTx = await wallet.signTxReturnFullTx(unsignedTx);
+  const txHash = await wallet.submitTx(signedTx);
 
-    return txHash;
+  return txHash;
 };

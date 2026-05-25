@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { timeAgoFrom, colorFromAddr, initialsFromAddress } from "@/lib/formatter";
 import { supabase } from "@/lib/supabase";
 
@@ -33,7 +33,6 @@ function DonationRow({ donation }: { donation: Donation }) {
   return (
     <div className="flex items-center gap-3 p-2.5 px-3.5 rounded-lg hover:bg-white/[0.04] transition duration-150 cursor-default">
       <Avatar color={donation.avatarColor} initials={donation.avatarInitials} />
-
       <div className="flex-1 min-w-0">
         <div className="text-xs sm:text-sm font-medium text-slate-200 font-mono truncate select-all">
           {donation.address}
@@ -42,7 +41,6 @@ function DonationRow({ donation }: { donation: Donation }) {
           {donation.timeAgo}
         </div>
       </div>
-
       <div className="text-right flex-shrink-0">
         <div className="text-xs sm:text-sm font-bold text-emerald-400 font-mono">
           +{donation.amount.toFixed(2)} <span className="text-[10px] opacity-80">₳</span>
@@ -59,67 +57,77 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
   const [filter, setFilter] = useState<"all" | "recent">("all");
   const [donations, setDonations] = useState<Donation[]>([]);
 
+  // ✅ useCallback so the function reference is stable across renders
+  const fetchDonations = useCallback(async () => {
+    if (!campaignAddress) return;
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("address", campaignAddress)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mapped: Donation[] = data.map((d: any) => ({
+          id: d.id,
+          address: d.tx_hash ? `sender_${d.tx_hash.slice(0, 6)}` : "Anonymous",
+          amount: Number(d.amount),
+          timeAgo: timeAgoFrom(d.created_at),
+          txHash: d.tx_hash,
+          avatarColor: colorFromAddr(d.tx_hash || d.id),
+          avatarInitials: initialsFromAddress(d.tx_hash || d.id),
+        }));
+        setDonations(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch donations:", err);
+    }
+  }, [campaignAddress]);
+
   useEffect(() => {
     if (!campaignAddress) return;
 
-    const fetchDonations = async () => {
-      try {
-        // Fetching directly via Supabase client filtering on campaign address matching
-        const { data, error } = await supabase
-          .from("transactions")
-          .select("*")
-          .eq("address", campaignAddress)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        if (data) {
-          const mapped: Donation[] = data.map((d: any) => ({
-            id: d.id,
-            address: d.tx_hash ? `sender_${d.tx_hash.slice(0,6)}` : "Anonymous", // Use sender identification context if applicable
-            amount: Number(d.amount),
-            timeAgo: timeAgoFrom(d.created_at),
-            txHash: d.tx_hash,
-            avatarColor: colorFromAddr(d.tx_hash || d.id),
-            avatarInitials: initialsFromAddress(d.tx_hash || d.id),
-          }));
-          setDonations(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch donations:", err);
-      }
-    };
-
     fetchDonations();
 
-    // Setup real-time pipeline to listen for newly created transactions targeting this campaign address
     const channel = supabase
       .channel(`history-realtime-${campaignAddress}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "transactions",
-        filter: `address=eq.${campaignAddress}`,
-      }, () => {
-        fetchDonations();
-      })
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transactions",
+          filter: `address=eq.${campaignAddress}`,
+        },
+        (payload) => {
+          console.log("Realtime event:", payload.eventType, payload.new);
+          const updated = payload.new as any;
+          if (updated?.status !== "confirmed") return;
+          fetchDonations();
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
 
-    return () => { supabase.removeChannel(channel); };
-  }, [campaignAddress]);
+    // ✅ cleanup on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignAddress, fetchDonations]); // ✅ fetchDonations in deps since it's stable via useCallback
 
   const filtered = filter === "recent" ? donations.slice(0, 3) : donations;
 
   return (
     <div className="w-full font-mono">
       <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] overflow-hidden shadow-2xl">
-        
-        {/* Header */}
         <div className="p-4 px-5 border-b border-white/[0.06] flex items-center justify-between">
           <span className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide">
             Recent Contributions
           </span>
-
           <div className="flex gap-1 bg-white/5 rounded-md p-0.5 border border-white/5">
             {(["all", "recent"] as const).map((f) => (
               <button
@@ -135,7 +143,6 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
           </div>
         </div>
 
-        {/* Donation List Container */}
         <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto custom-scrollbar">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-xs sm:text-sm">
@@ -148,7 +155,6 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
           )}
         </div>
 
-        {/* Summary Footer */}
         <div className="border-t border-white/[0.06] p-3 px-5 flex justify-between items-center bg-[#111520]/50 text-xs">
           <span className="text-slate-500">
             {donations.length} {donations.length === 1 ? "transaction" : "transactions"} total

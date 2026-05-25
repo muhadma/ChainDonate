@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const mapped = (data || []).map((t) => ({
+  const mapped = (data || []).map((t: any) => ({
     id: t.id,
     txHash: t.tx_hash,
     address: t.address,
