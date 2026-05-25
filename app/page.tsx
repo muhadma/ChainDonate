@@ -4,6 +4,7 @@ import Wallet from "@/components/wallet";
 import RegisterCampaignModal from "@/components/RegisterFormModal"; 
 import CampaignDashboard from "@/components/CampaignDashboard"; 
 import CampaignModal from "@/components/CampaignModal"; 
+import TreasuryWidget from "@/components/TreasuryWidget";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -88,12 +89,22 @@ export default function Home() {
       </div>
 
       {/* RENDER SEPARATED DASHBOARD GRID VIEW */}
-      <CampaignDashboard 
-        campaigns={campaigns}
-        loading={loading}
-        onSelectCampaign={(campaign) => setSelectedCampaign(campaign)}
-        onOpenRegister={() => setIsRegisterOpen(true)}
-      />
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Treasury Widget Sidebar */}
+        <div className="lg:col-span-1">
+          <TreasuryWidget />
+        </div>
+        
+        {/* Main Campaign Dashboard */}
+        <div className="lg:col-span-3">
+          <CampaignDashboard 
+            campaigns={campaigns}
+            loading={loading}
+            onSelectCampaign={(campaign) => setSelectedCampaign(campaign)}
+            onOpenRegister={() => setIsRegisterOpen(true)}
+          />
+        </div>
+      </div>
 
       {/* REUSABLE SEPARATED REGISTRATION MODAL */}
       <RegisterCampaignModal 

@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
-import { sendLovelace } from "@/lib/transaction";
+import { sendLovelace, sendMultipleRecipients } from "@/lib/transaction";
 import { supabase } from "@/lib/supabase";
+import TreasuryToggle from "./TreasuryToggle";
+import InvoiceCalculator from "./InvoiceCalculator";
 
 interface DonateButtonProps {
   wallet: MeshCardanoBrowserWallet | null;
@@ -13,6 +15,7 @@ interface DonateButtonProps {
 
 const PRESET_AMOUNTS = [1.0, 2.0, 5.0, 10.0];
 const MIN_ADA_REQUIRED = 1.0;
+const TREASURY_FEE = 1.0;
 
 function isValidAmountInput(val: string): boolean {
   if (val === "") return true;
@@ -29,6 +32,7 @@ function isConfirmable(val: string): boolean {
 export default function DonateButton({ wallet, fundAddress, onDonate }: DonateButtonProps) {
   const [amount, setAmount] = useState<string>("1.0");
   const [selected, setSelected] = useState<number | null>(1.0);
+  const [treasuryEnabled, setTreasuryEnabled] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,21 +87,47 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
     setStatus("idle");
 
     try {
-      const lovelace = Math.floor(parsedAmount * 1_000_000).toString();
+      const donationLovelace = Math.floor(parsedAmount * 1_000_000).toString();
+      let minedTxHash: string;
+      let totalAmountSent = parsedAmount;
 
-      // Submit direct peer-to-peer payload via Mesh SDK to the destination wallet
-      const minedTxHash = await sendLovelace(wallet, {
-        address: fundAddress,
-        amount: lovelace,
-      });
+      // Handle treasury fee if enabled
+      if (treasuryEnabled) {
+        const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
+        if (!treasuryAddress) {
+          throw new Error("Treasury address not configured");
+        }
 
-      // Insert transaction history straight into Supabase using the campaign's address
+        const treasuryLovelace = Math.floor(TREASURY_FEE * 1_000_000).toString();
+        
+        // Send to both campaign and treasury in one transaction
+        minedTxHash = await sendMultipleRecipients(wallet, [
+          {
+            address: fundAddress,
+            amount: donationLovelace,
+          },
+          {
+            address: treasuryAddress,
+            amount: treasuryLovelace,
+          },
+        ]);
+
+        totalAmountSent = parsedAmount + TREASURY_FEE;
+      } else {
+        // Send only to campaign
+        minedTxHash = await sendLovelace(wallet, {
+          address: fundAddress,
+          amount: donationLovelace,
+        });
+      }
+
+      // Insert donation transaction into Supabase
       const { error: dbError } = await supabase
         .from("transactions")
         .insert([
           {
             tx_hash: minedTxHash,
-            address: fundAddress, // Maps perfectly to your transaction schema's address column
+            address: fundAddress,
             amount: parsedAmount,
           },
         ]);
@@ -108,7 +138,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
       setStatus("success");
       setConfirmed(true);
 
-      onDonate?.(parsedAmount, minedTxHash);
+      onDonate?.(totalAmountSent, minedTxHash);
       setTimeout(() => setConfirmed(false), 3000);
 
     } catch (err: any) {
@@ -126,12 +156,15 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
   };
 
   return (
-    <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-3">
+    <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-4">
       
       {/* Label */}
       <div className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide">
         Make a donation
       </div>
+
+      {/* Treasury Toggle */}
+      <TreasuryToggle enabled={treasuryEnabled} onChange={setTreasuryEnabled} />
 
       {/* Input Row */}
       <div className="flex gap-2">
@@ -188,6 +221,9 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
           </button>
         ))}
       </div>
+
+      {/* Invoice Calculator */}
+      <InvoiceCalculator donationAmount={amount} treasuryEnabled={treasuryEnabled} />
 
       {/* Hash Receipts Feed */}
       {status === "success" && txHash && (
