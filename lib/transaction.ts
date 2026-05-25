@@ -4,16 +4,16 @@ import type { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 const apiKey = process.env.NEXT_PUBLIC_BLOCKFROST_PROJECT_ID;
 
 if (!apiKey) {
-    throw new Error(
-        "Blockfrost API key is not defined in environment variables.",
-    );
+  throw new Error(
+    "Blockfrost API key is not defined in environment variables."
+  );
 }
 
 const provider = new BlockfrostProvider(apiKey);
 
 export type Recipient = {
-    address: string;
-    amount: string;
+  address: string;
+  amount: string;
 };
 
 export type MultiRecipient = {
@@ -21,8 +21,8 @@ export type MultiRecipient = {
 };
 
 export const sendLovelace = async (
-    wallet: MeshCardanoBrowserWallet,
-    recipient: Recipient,
+  wallet: MeshCardanoBrowserWallet,
+  recipient: Recipient
 ): Promise<string> => {
     const txBuilder = new MeshTxBuilder({
         fetcher: provider,

@@ -6,11 +6,15 @@ import { sendLovelace, sendMultipleRecipients } from "@/lib/transaction";
 import { supabase } from "@/lib/supabase";
 import TreasuryToggle from "./TreasuryToggle";
 import InvoiceCalculator from "./InvoiceCalculator";
+import { pollTxConfirmation } from "@/lib/pollTxConfirmation";
 
 interface DonateButtonProps {
   wallet: MeshCardanoBrowserWallet | null;
-  fundAddress: string; // This is the campaign's target address passed from the modal
+  fundAddress: string;
   onDonate?: (amount: number, txHash: string) => void;
+  goal: number;
+  totalRaised: number;
+  campaignId: string;
 }
 
 const PRESET_AMOUNTS = [1.0, 2.0, 5.0, 10.0];
@@ -29,7 +33,7 @@ function isConfirmable(val: string): boolean {
   return !isNaN(parsed) && parsed >= MIN_ADA_REQUIRED && isFinite(parsed);
 }
 
-export default function DonateButton({ wallet, fundAddress, onDonate }: DonateButtonProps) {
+export default function DonateButton({ wallet, fundAddress, onDonate, goal, totalRaised, campaignId }: DonateButtonProps) {
   const [amount, setAmount] = useState<string>("1.0");
   const [selected, setSelected] = useState<number | null>(1.0);
   const [treasuryEnabled, setTreasuryEnabled] = useState(false);
@@ -39,7 +43,10 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
   const [txHash, setTxHash] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
 
+  const isGoalMet = totalRaised >= goal;
+
   const handlePreset = (value: number) => {
+    if (isGoalMet) return;
     setSelected(value);
     setAmount(value.toString());
     setConfirmed(false);
@@ -75,10 +82,9 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
     }
 
     try {
-      // Ensure wallet is unlocked before generating payload
       await wallet.getChangeAddressBech32();
-    } catch (err) {
-      setError("⚠ Wallet is locked. Please unlock or reconnect your wallet.");
+    } catch {
+      setError("Wallet is locked. Please unlock or reconnect your wallet.");
       return;
     }
 
@@ -100,39 +106,51 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
 
         const treasuryLovelace = Math.floor(TREASURY_FEE * 1_000_000).toString();
         
-        // Send to both campaign and treasury in one transaction
         minedTxHash = await sendMultipleRecipients(wallet, [
-          {
+            { address: fundAddress, amount: donationLovelace },
+            { address: treasuryAddress, amount: treasuryLovelace },
+          ]);
+
+          totalAmountSent = parsedAmount + TREASURY_FEE;
+        } else {
+          minedTxHash = await sendLovelace(wallet, {
             address: fundAddress,
             amount: donationLovelace,
-          },
-          {
-            address: treasuryAddress,
-            amount: treasuryLovelace,
-          },
-        ]);
+          });
+        }
 
-        totalAmountSent = parsedAmount + TREASURY_FEE;
-      } else {
-        // Send only to campaign
-        minedTxHash = await sendLovelace(wallet, {
-          address: fundAddress,
-          amount: donationLovelace,
-        });
-      }
-
-      // Insert donation transaction into Supabase
+      // Insert as pending first
       const { error: dbError } = await supabase
         .from("transactions")
-        .insert([
-          {
-            tx_hash: minedTxHash,
-            address: fundAddress,
-            amount: parsedAmount,
-          },
-        ]);
+        .insert([{
+          tx_hash: minedTxHash,
+          address: fundAddress,
+          amount: parsedAmount,
+          campaign_id: campaignId,
+          status: "pending",
+        }]);
 
       if (dbError) throw dbError;
+
+      const isConfirmed = await pollTxConfirmation(minedTxHash);
+
+      if (!isConfirmed) {
+        // ✅ Clean up the orphaned pending row
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("tx_hash", minedTxHash);
+
+        setStatus("error");
+        setError("Transaction was submitted but could not be confirmed on-chain.");
+        return;
+      }
+
+      // ✅ Mark as confirmed in DB so status stays accurate
+      await supabase
+        .from("transactions")
+        .update({ status: "confirmed" })
+        .eq("tx_hash", minedTxHash);
 
       setTxHash(minedTxHash);
       setStatus("success");
@@ -146,7 +164,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
       setStatus("error");
 
       if (err?.message?.includes("BabbageOutputTooSmallUTxO")) {
-        setError("Cardano Ledger Exception: Target amount is below the network's protocol dust limits.");
+        setError("Cardano Ledger Exception: Target amount is below the network protocol dust limits.");
       } else {
         setError(err?.message ?? "Transaction payload writing failed");
       }
@@ -174,48 +192,56 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
           value={amount}
           onChange={handleInput}
           placeholder="0.0"
-          className={`flex-1 bg-[#0f1117] rounded-lg text-sm font-semibold font-mono p-2.5 px-3.5 text-slate-200 outline-none transition duration-150 ${
-            error 
-              ? "border border-red-500/50 focus:border-red-500/70" 
-              : "border border-white/10 focus:border-emerald-500/40"
-          }`}
+          disabled={isGoalMet}
+          className={`flex-1 bg-[#0f1117] rounded-lg text-sm font-semibold font-mono p-2.5 px-3.5 text-slate-200 outline-none transition duration-150 ${error
+            ? "border border-red-500/50 focus:border-red-500/70"
+            : "border border-white/10 focus:border-emerald-500/40"
+            } ${isGoalMet ? 'opacity-40 cursor-not-allowed' : ''}`}
         />
 
         <button
           onClick={handleConfirm}
-          disabled={!isConfirmable(amount) || confirming}
-          className={`text-white border-none rounded-lg text-xs sm:text-sm font-bold font-mono p-2.5 px-4 whitespace-nowrap tracking-wide transition-all duration-200 ${
-            confirmed 
-              ? "bg-green-800 cursor-default" 
-              : confirming 
-                ? "bg-green-900 cursor-not-allowed" 
+          disabled={isGoalMet || !isConfirmable(amount) || confirming}
+          className={`text-white border-none rounded-lg text-xs sm:text-sm font-bold font-mono p-2.5 px-4 whitespace-nowrap tracking-wide transition-all duration-200 ${isGoalMet
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+            : confirmed
+              ? "bg-green-800 cursor-default"
+              : confirming
+                ? "bg-green-900 cursor-not-allowed"
                 : !isConfirmable(amount)
                   ? "bg-emerald-600 opacity-50 cursor-not-allowed"
                   : "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
-          }`}
+            }`}
         >
-          {confirming ? "Sending..." : confirmed ? "✓ Sent!" : "Confirm donation"}
+          {isGoalMet
+            ? 'Goal Achieved — Campaign Closed'
+            : confirming
+              ? "Waiting for confirmation..."
+              : confirmed
+                ? "Sent!"
+                : "Confirm donation"
+          }
         </button>
       </div>
 
-      {/* Inline validation error info */}
       {error && (
         <div className="text-[11px] text-red-400 tracking-wide leading-relaxed">
-          ⚠ {error}
+          {error}
         </div>
       )}
 
-      {/* Preset Amount Grid Utilities */}
       <div className="flex gap-2 w-full">
         {PRESET_AMOUNTS.map((value) => (
           <button
             key={value}
+            disabled={isGoalMet}
             onClick={() => handlePreset(value)}
-            className={`flex-1 rounded-md text-[11px] font-semibold font-mono py-2 transition duration-150 tracking-wide border cursor-pointer ${
-              selected === value
-                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
-                : "bg-white/5 border-white/[0.08] text-slate-400 hover:text-slate-300 hover:bg-white/10"
-            }`}
+            className={`flex-1 rounded-md text-[11px] font-semibold font-mono py-2 transition duration-150 tracking-wide border ${isGoalMet
+              ? 'opacity-40 cursor-not-allowed'
+              : selected === value
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 cursor-pointer"
+                : "bg-white/5 border-white/[0.08] text-slate-400 hover:text-slate-300 hover:bg-white/10 cursor-pointer"
+              }`}
           >
             {value.toFixed(1)} ADA
           </button>
@@ -228,7 +254,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate }: DonateBu
       {/* Hash Receipts Feed */}
       {status === "success" && txHash && (
         <div className="mt-3 text-[11px] text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 p-3 rounded-lg space-y-1 break-all">
-          <div className="font-bold">✅ Donation successful!</div>
+          <div className="font-bold">Donation successful!</div>
           <div className="text-slate-400 text-[10px]">TX Hash:</div>
           <div className="select-all font-mono text-[10px] bg-black/30 p-1.5 rounded border border-white/5">{txHash}</div>
         </div>
