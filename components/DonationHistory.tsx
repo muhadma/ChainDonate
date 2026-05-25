@@ -10,6 +10,7 @@ interface Donation {
   amount: number;
   timeAgo: string;
   txHash: string;
+  createdAt: string;
   avatarColor: string;
   avatarInitials: string;
 }
@@ -75,8 +76,9 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
           id: d.id,
           address: d.tx_hash ? `sender_${d.tx_hash.slice(0, 6)}` : "Anonymous",
           amount: Number(d.amount),
-          timeAgo: timeAgoFrom(d.created_at),
+          timeAgo: timeAgoFrom(d.confirmed_at ?? d.created_at),
           txHash: d.tx_hash,
+          createdAt: d.confirmed_at ?? d.created_at,
           avatarColor: colorFromAddr(d.tx_hash || d.id),
           avatarInitials: initialsFromAddress(d.tx_hash || d.id),
         }));
@@ -119,7 +121,9 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
     };
   }, [campaignAddress, fetchDonations]); // ✅ fetchDonations in deps since it's stable via useCallback
 
-  const filtered = filter === "recent" ? donations.slice(0, 3) : donations;
+  const filtered = filter === "recent"
+    ? donations.slice(0, 10)
+    : donations;
 
   return (
     <div className="w-full font-mono">
@@ -137,13 +141,13 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
                   filter === f ? "bg-white/[0.12] text-slate-200" : "bg-transparent text-slate-500 hover:text-slate-400"
                 }`}
               >
-                {f === "all" ? "View all" : "Recent"}
+                {f === "all" ? "View all" : "Recent (10)"}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto custom-scrollbar">
+        <div className="p-2 space-y-1 max-h-[360px] overflow-y-auto overscroll-contain custom-scrollbar">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-xs sm:text-sm">
               No contributions recorded yet.
