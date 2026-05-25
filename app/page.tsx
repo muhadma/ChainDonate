@@ -21,7 +21,7 @@ interface Campaign {
 
 export default function Home() {
   const [wallet, setWallet] = useState<MeshCardanoBrowserWallet | null>(null);
-  const [address, setAddress] = useState("");
+  const [setAddress] = useState("");
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
