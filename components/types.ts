@@ -5,7 +5,7 @@ export interface Campaign {
   targetAddress: string;
   goal: number;
   isVerified: boolean;
-  treasuryEnabled: boolean;
+  treasuryEnabled: boolean; // feature to be added later
 }
 
 export interface Transaction {

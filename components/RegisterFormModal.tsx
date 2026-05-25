@@ -29,6 +29,7 @@ export default function RegisterCampaignModal({
 
     setIsSubmitting(true);
     try {
+      
       const { error } = await supabase.from("campaigns").insert([
         {
           title,
