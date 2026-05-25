@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
 import { sendLovelace } from "@/lib/transaction";
 import { supabase } from "@/lib/supabase";
+import { pollTxConfirmation } from "@/lib/pollTxConfirmation";
 
 interface DonateButtonProps {
   wallet: MeshCardanoBrowserWallet | null;
@@ -11,6 +12,7 @@ interface DonateButtonProps {
   onDonate?: (amount: number, txHash: string) => void;
   goal: number;
   totalRaised: number;
+  campaignId: string;
 }
 
 const PRESET_AMOUNTS = [1.0, 2.0, 5.0, 10.0];
@@ -28,7 +30,7 @@ function isConfirmable(val: string): boolean {
   return !isNaN(parsed) && parsed >= MIN_ADA_REQUIRED && isFinite(parsed);
 }
 
-export default function DonateButton({ wallet, fundAddress, onDonate, goal, totalRaised }: DonateButtonProps) {
+export default function DonateButton({ wallet, fundAddress, onDonate, goal, totalRaised, campaignId }: DonateButtonProps) {
   const [amount, setAmount] = useState<string>("1.0");
   const [selected, setSelected] = useState<number | null>(1.0);
   const [confirming, setConfirming] = useState(false);
@@ -77,7 +79,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
 
     try {
       await wallet.getChangeAddressBech32();
-    } catch (err) {
+    } catch {
       setError("Wallet is locked. Please unlock or reconnect your wallet.");
       return;
     }
@@ -94,17 +96,38 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
         amount: lovelace,
       });
 
+      // Insert as pending first
       const { error: dbError } = await supabase
         .from("transactions")
-        .insert([
-          {
-            tx_hash: minedTxHash,
-            address: fundAddress,
-            amount: parsedAmount,
-          },
-        ]);
+        .insert([{
+          tx_hash: minedTxHash,
+          address: fundAddress,
+          amount: parsedAmount,
+          campaign_id: campaignId,
+          status: "pending",
+        }]);
 
       if (dbError) throw dbError;
+
+      const isConfirmed = await pollTxConfirmation(minedTxHash);
+
+      if (!isConfirmed) {
+        // ✅ Clean up the orphaned pending row
+        await supabase
+          .from("transactions")
+          .delete()
+          .eq("tx_hash", minedTxHash);
+
+        setStatus("error");
+        setError("Transaction was submitted but could not be confirmed on-chain.");
+        return;
+      }
+
+      // ✅ Mark as confirmed in DB so status stays accurate
+      await supabase
+        .from("transactions")
+        .update({ status: "confirmed" })
+        .eq("tx_hash", minedTxHash);
 
       setTxHash(minedTxHash);
       setStatus("success");
@@ -112,6 +135,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
 
       onDonate?.(parsedAmount, minedTxHash);
       setTimeout(() => setConfirmed(false), 3000);
+
     } catch (err: any) {
       console.error("Cardano Pipeline Failure:", err);
       setStatus("error");
@@ -140,32 +164,30 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
           onChange={handleInput}
           placeholder="0.0"
           disabled={isGoalMet}
-          className={`flex-1 bg-[#0f1117] rounded-lg text-sm font-semibold font-mono p-2.5 px-3.5 text-slate-200 outline-none transition duration-150 ${
-            error
-              ? "border border-red-500/50 focus:border-red-500/70"
-              : "border border-white/10 focus:border-emerald-500/40"
-          } ${isGoalMet ? 'opacity-40 cursor-not-allowed' : ''}`}
+          className={`flex-1 bg-[#0f1117] rounded-lg text-sm font-semibold font-mono p-2.5 px-3.5 text-slate-200 outline-none transition duration-150 ${error
+            ? "border border-red-500/50 focus:border-red-500/70"
+            : "border border-white/10 focus:border-emerald-500/40"
+            } ${isGoalMet ? 'opacity-40 cursor-not-allowed' : ''}`}
         />
 
         <button
           onClick={handleConfirm}
           disabled={isGoalMet || !isConfirmable(amount) || confirming}
-          className={`text-white border-none rounded-lg text-xs sm:text-sm font-bold font-mono p-2.5 px-4 whitespace-nowrap tracking-wide transition-all duration-200 ${
-            isGoalMet
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
-              : confirmed
-                ? "bg-green-800 cursor-default"
-                : confirming
-                  ? "bg-green-900 cursor-not-allowed"
-                  : !isConfirmable(amount)
-                    ? "bg-emerald-600 opacity-50 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
-          }`}
+          className={`text-white border-none rounded-lg text-xs sm:text-sm font-bold font-mono p-2.5 px-4 whitespace-nowrap tracking-wide transition-all duration-200 ${isGoalMet
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-60'
+            : confirmed
+              ? "bg-green-800 cursor-default"
+              : confirming
+                ? "bg-green-900 cursor-not-allowed"
+                : !isConfirmable(amount)
+                  ? "bg-emerald-600 opacity-50 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-500 cursor-pointer"
+            }`}
         >
           {isGoalMet
             ? 'Goal Achieved — Campaign Closed'
             : confirming
-              ? "Sending..."
+              ? "Waiting for confirmation..."
               : confirmed
                 ? "Sent!"
                 : "Confirm donation"
@@ -185,13 +207,12 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
             key={value}
             disabled={isGoalMet}
             onClick={() => handlePreset(value)}
-            className={`flex-1 rounded-md text-[11px] font-semibold font-mono py-2 transition duration-150 tracking-wide border ${
-              isGoalMet
-                ? 'opacity-40 cursor-not-allowed'
-                : selected === value
-                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 cursor-pointer"
-                  : "bg-white/5 border-white/[0.08] text-slate-400 hover:text-slate-300 hover:bg-white/10 cursor-pointer"
-            }`}
+            className={`flex-1 rounded-md text-[11px] font-semibold font-mono py-2 transition duration-150 tracking-wide border ${isGoalMet
+              ? 'opacity-40 cursor-not-allowed'
+              : selected === value
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 cursor-pointer"
+                : "bg-white/5 border-white/[0.08] text-slate-400 hover:text-slate-300 hover:bg-white/10 cursor-pointer"
+              }`}
           >
             {value.toFixed(1)} ADA
           </button>
