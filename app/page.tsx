@@ -77,7 +77,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0f1117] text-white flex flex-col items-center py-10 px-4 gap-10 relative">
       
-      {/* Top Utilities Navbar */}
       <div className="w-full max-w-6xl flex justify-between items-center border-b border-white/5 pb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-green-500 bg-clip-text text-transparent">
@@ -88,14 +87,12 @@ export default function Home() {
         <Wallet onWalletChange={(wallet, addr) => { setWallet(wallet); setAddress(addr); }} />
       </div>
 
-      {/* RENDER SEPARATED DASHBOARD GRID VIEW */}
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Treasury Widget Sidebar */}
+
         <div className="lg:col-span-1">
           <TreasuryWidget />
         </div>
-        
-        {/* Main Campaign Dashboard */}
+      
         <div className="lg:col-span-3">
           <CampaignDashboard 
             campaigns={campaigns}
@@ -106,14 +103,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* REUSABLE SEPARATED REGISTRATION MODAL */}
       <RegisterCampaignModal 
         isOpen={isRegisterOpen} 
         onClose={() => setIsRegisterOpen(false)} 
         onSuccess={fetchCampaigns}
       />
 
-      {/* DYNAMIC DETAIL MODAL VIEW */}
       <CampaignModal 
         campaign={selectedCampaign}
         isOpen={selectedCampaign !== null}

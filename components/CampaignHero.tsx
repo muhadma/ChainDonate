@@ -35,7 +35,6 @@ export default function CampaignHeroCard({
 
   return (
     <div className="w-full space-y-4 pb-2">
-      {/* Status Badge */}
       <div className="flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -46,7 +45,6 @@ export default function CampaignHeroCard({
         </span>
       </div>
 
-      {/* Title & Subtitle */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {title}
@@ -56,7 +54,6 @@ export default function CampaignHeroCard({
         </p>
       </div>
 
-      {/* Wallet Status with Copy Utility */}
       <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-[#0b0d12] p-3.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <Wallet className="h-4 w-4 text-gray-400 flex-shrink-0" />

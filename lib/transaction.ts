@@ -46,10 +46,7 @@ export const sendLovelace = async (
     return txHash;
 };
 
-/**
- * Send ADA to multiple recipients in a single transaction
- * Useful for sending donations to campaign + treasury fee in one tx
- */
+
 export const sendMultipleRecipients = async (
     wallet: MeshCardanoBrowserWallet,
     recipients: Recipient[],
@@ -64,7 +61,6 @@ export const sendMultipleRecipients = async (
 
     let tx = txBuilder;
 
-    // Add output for each recipient
     for (const recipient of recipients) {
         tx = tx.txOut(recipient.address, [
             { unit: "lovelace", quantity: recipient.amount },
