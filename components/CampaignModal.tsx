@@ -68,7 +68,7 @@ export default function CampaignModal({ campaign, isOpen, onClose, wallet }: Cam
                   campaignTitle={campaign.title}
                   totalRaised={totalRaised}
                   donationCount={donationCount}
-                  explorerUrl={`https://preprod.cardanoscan.io/address/${campaign.targetAddress}`}
+                  explorerUrl={`https://preview.cardanoscan.io/address/${campaign.targetAddress}`}
                 />
               ) : (
                 <>
@@ -77,6 +77,7 @@ export default function CampaignModal({ campaign, isOpen, onClose, wallet }: Cam
                     fundAddress={campaign.targetAddress}
                     goal={campaign.goal}
                     totalRaised={totalRaised}
+                    campaignId={campaign.id}
                   />
                   {campaign.treasuryEnabled && (
                     <p className="text-[11px] text-amber-400/70 mt-2 italic">
