@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import { MeshCardanoBrowserWallet } from "@meshsdk/wallet";
-import { sendLovelace } from "@/lib/transaction";
+import { sendLovelace, sendMultipleRecipients } from "@/lib/transaction";
 import { supabase } from "@/lib/supabase";
+import TreasuryToggle from "./TreasuryToggle";
+import InvoiceCalculator from "./InvoiceCalculator";
 import { pollTxConfirmation } from "@/lib/pollTxConfirmation";
 
 interface DonateButtonProps {
@@ -17,6 +19,7 @@ interface DonateButtonProps {
 
 const PRESET_AMOUNTS = [1.0, 2.0, 5.0, 10.0];
 const MIN_ADA_REQUIRED = 1.0;
+const TREASURY_FEE = 1.0;
 
 function isValidAmountInput(val: string): boolean {
   if (val === "") return true;
@@ -33,6 +36,7 @@ function isConfirmable(val: string): boolean {
 export default function DonateButton({ wallet, fundAddress, onDonate, goal, totalRaised, campaignId }: DonateButtonProps) {
   const [amount, setAmount] = useState<string>("1.0");
   const [selected, setSelected] = useState<number | null>(1.0);
+  const [treasuryEnabled, setTreasuryEnabled] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +93,31 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
     setStatus("idle");
 
     try {
-      const lovelace = Math.floor(parsedAmount * 1_000_000).toString();
+      const donationLovelace = Math.floor(parsedAmount * 1_000_000).toString();
+      let minedTxHash: string;
+      let totalAmountSent = parsedAmount;
 
-      const minedTxHash = await sendLovelace(wallet, {
-        address: fundAddress,
-        amount: lovelace,
-      });
+      // Handle treasury fee if enabled
+      if (treasuryEnabled) {
+        const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
+        if (!treasuryAddress) {
+          throw new Error("Treasury address not configured");
+        }
+
+        const treasuryLovelace = Math.floor(TREASURY_FEE * 1_000_000).toString();
+        
+        minedTxHash = await sendMultipleRecipients(wallet, [
+            { address: fundAddress, amount: donationLovelace },
+            { address: treasuryAddress, amount: treasuryLovelace },
+          ]);
+
+          totalAmountSent = parsedAmount + TREASURY_FEE;
+        } else {
+          minedTxHash = await sendLovelace(wallet, {
+            address: fundAddress,
+            amount: donationLovelace,
+          });
+        }
 
       // Insert as pending first
       const { error: dbError } = await supabase
@@ -133,7 +156,7 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
       setStatus("success");
       setConfirmed(true);
 
-      onDonate?.(parsedAmount, minedTxHash);
+      onDonate?.(totalAmountSent, minedTxHash);
       setTimeout(() => setConfirmed(false), 3000);
 
     } catch (err: any) {
@@ -151,11 +174,17 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
   };
 
   return (
-    <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-3">
+    <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-4">
+      
+      {/* Label */}
       <div className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide">
         Make a donation
       </div>
 
+      {/* Treasury Toggle */}
+      <TreasuryToggle enabled={treasuryEnabled} onChange={setTreasuryEnabled} />
+
+      {/* Input Row */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -219,6 +248,10 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
         ))}
       </div>
 
+      {/* Invoice Calculator */}
+      <InvoiceCalculator donationAmount={amount} treasuryEnabled={treasuryEnabled} />
+
+      {/* Hash Receipts Feed */}
       {status === "success" && txHash && (
         <div className="mt-3 text-[11px] text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 p-3 rounded-lg space-y-1 break-all">
           <div className="font-bold">Donation successful!</div>
