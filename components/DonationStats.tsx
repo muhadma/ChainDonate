@@ -29,7 +29,8 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({
       const { data: transactions, error: txError } = await supabase
         .from("transactions")
         .select("address, amount")
-        .eq("address", campaignAddress);
+        .eq("address", campaignAddress)
+        .eq("status", "confirmed");
 
       if (txError) {
         console.error("Failed to fetch transactions:", txError);
@@ -57,6 +58,12 @@ const DonationStatsComponent: React.FC<DonationStatsProps> = ({
       .channel(`stats-realtime-${campaignAddress}`)
       .on("postgres_changes", {
         event: "INSERT",
+        schema: "public",
+        table: "transactions",
+        filter: `address=eq.${campaignAddress}`,
+      }, () => fetchStats())
+      .on("postgres_changes", {
+        event: "UPDATE",
         schema: "public",
         table: "transactions",
         filter: `address=eq.${campaignAddress}`,
