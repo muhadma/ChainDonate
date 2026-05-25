@@ -95,13 +95,14 @@ export default function RegisterCampaignModal({
     if (!title || !description || !goal || !walletAddress) return;
     setIsSubmitting(true);
     try {
+      
       const { error } = await supabase.from("campaigns").insert([
         {
           title,
           description,
           target_address: walletAddress,
           goal: parseFloat(goal),
-          treasury_enabled: false,
+          treasury_enabled: treasuryEnabled,
           is_verified: false,
         },
       ]);

@@ -17,17 +17,20 @@ export default function CampaignDashboard({
   onSelectCampaign,
   onOpenRegister,
 }: CampaignDashboardProps) {
+  const activeCampaigns = campaigns.filter((c) => !(c as any).isArchived);
+  const completedCampaigns = campaigns.filter((c) => !!(c as any).isArchived);
+
   return (
     <div className="w-full max-w-6xl space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold tracking-wide text-gray-200">
-          Active Campaigns
+          Campaigns
         </h2>
         <button
-            onClick={onOpenRegister}
-            className="px-4 py-2 bg-gradient-to-r bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium transition shadow-md shadow-emerald-900/20 text-white"
-            >
-            + Register Campaign
+          onClick={onOpenRegister}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium transition shadow-md shadow-emerald-900/20 text-white"
+        >
+          + Register Campaign
         </button>
       </div>
 
@@ -60,17 +63,49 @@ export default function CampaignDashboard({
                       </span>
                     )}
                   </div>
-                </div>
-                <p className="text-sm text-gray-400 mt-2 line-clamp-2 leading-relaxed">
-                  {campaign.description}
-                </p>
+                ))}
               </div>
-              <div className="text-[11px] font-mono text-gray-500 bg-[#0f1117] p-2 rounded border border-white/5 truncate">
-                Target Address: {campaign.targetAddress}
+            )}
+          </div>
+
+          {/* ── Completed Campaigns ───────────────────── */}
+          <div>
+            <h2 className="text-xs font-mono font-semibold text-gray-500 uppercase tracking-widest mb-4">
+              Completed Campaigns
+            </h2>
+            {completedCampaigns.length === 0 ? (
+              <p className="text-sm font-mono text-gray-600">No completed campaigns yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-75">
+                {completedCampaigns.map((campaign) => (
+                  <div key={campaign.id} className="relative">
+                    <span className="absolute top-3 right-3 z-10 text-xs font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                      Closed
+                    </span>
+                    <div
+                      onClick={() => onSelectCampaign(campaign)}
+                      className="group border border-white/5 rounded-xl p-6 bg-[#131722] hover:border-amber-500/30 cursor-pointer transition flex flex-col justify-between space-y-4 shadow-lg"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start gap-4">
+                          <h3 className="text-lg font-medium text-gray-400 group-hover:text-amber-400 transition truncate">
+                            {campaign.title}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                          {campaign.description}
+                        </p>
+                      </div>
+                      <div className="text-[11px] font-mono text-gray-600 bg-[#0f1117] p-2 rounded border border-white/5 truncate">
+                        Target: {campaign.targetAddress.slice(0, 14)}...
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

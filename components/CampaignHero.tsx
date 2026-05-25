@@ -15,8 +15,8 @@ export function shortenAddress(address: string, size = 8) {
 }
 
 export default function CampaignHeroCard({
-  title = "Class Fund 2026",
-  subtitle = "Raising funds for our department's capstone showcase: equipment, printing, and venue costs for all project teams.",
+  title = "",
+  subtitle = "",
   walletAddress,
 }: Props) {
   const [copied, setCopied] = useState(false);
