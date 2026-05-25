@@ -43,6 +43,7 @@ export default function CampaignDashboard({
           No active campaigns found in database. Click Register above to launch one!
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {campaigns.map((campaign) => (
             <div
@@ -63,10 +64,11 @@ export default function CampaignDashboard({
                       </span>
                     )}
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ))}
+        </div>
 
           {/* ── Completed Campaigns ───────────────────── */}
           <div>
