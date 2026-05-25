@@ -97,7 +97,6 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
       let minedTxHash: string;
       let totalAmountSent = parsedAmount;
 
-      // Handle treasury fee if enabled
       if (treasuryEnabled) {
         const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
         if (!treasuryAddress) {
@@ -119,7 +118,6 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
           });
         }
 
-      // Insert as pending first
       const { error: dbError } = await supabase
         .from("transactions")
         .insert([{
@@ -135,7 +133,6 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
       const isConfirmed = await pollTxConfirmation(minedTxHash);
 
       if (!isConfirmed) {
-        // ✅ Clean up the orphaned pending row
         await supabase
           .from("transactions")
           .delete()
@@ -146,7 +143,6 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
         return;
       }
 
-      // ✅ Mark as confirmed in DB so status stays accurate
       await supabase
         .from("transactions")
         .update({ status: "confirmed" })
@@ -176,15 +172,12 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
   return (
     <div className="w-full bg-[#161b27] rounded-xl border border-white/[0.07] p-5 shadow-2xl font-mono box-border space-y-4">
       
-      {/* Label */}
       <div className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide">
         Make a donation
       </div>
 
-      {/* Treasury Toggle */}
       <TreasuryToggle enabled={treasuryEnabled} onChange={setTreasuryEnabled} />
 
-      {/* Input Row */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -248,10 +241,8 @@ export default function DonateButton({ wallet, fundAddress, onDonate, goal, tota
         ))}
       </div>
 
-      {/* Invoice Calculator */}
       <InvoiceCalculator donationAmount={amount} treasuryEnabled={treasuryEnabled} />
 
-      {/* Hash Receipts Feed */}
       {status === "success" && txHash && (
         <div className="mt-3 text-[11px] text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 p-3 rounded-lg space-y-1 break-all">
           <div className="font-bold">Donation successful!</div>

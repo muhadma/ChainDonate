@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { DollarSign, TrendingUp } from "lucide-react";
 
 interface TreasuryWidgetProps {
@@ -24,7 +24,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
       try {
         setLoading(true);
         
-        // Use the provided treasury address or fall back to env variable
         const address = treasuryAddress || process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
         
         if (!address) {
@@ -40,7 +39,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
           return;
         }
 
-        // Query Blockfrost API for address details (accepts payment addresses)
         const response = await fetch(
           `https://cardano-preview.blockfrost.io/api/v0/addresses/${address}`,
           {
@@ -51,7 +49,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
           }
         );
 
-        // Handle 400/404 errors - address not found or invalid
         if (response.status === 400 || response.status === 404) {
           setBalance(0);
           setError(null);
@@ -65,14 +62,12 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
         }
 
         const data = await response.json();
-        // The amount field returns an array of coin entries; find lovelace (empty unit)
         const lovelaceAmount = data.amount?.find((coin: any) => coin.unit === "lovelace")?.quantity || "0";
         const balanceInAda = parseInt(lovelaceAmount) / 1_000_000;
         setBalance(balanceInAda);
         setError(null);
       } catch (err) {
         console.error("Treasury balance fetch error:", err);
-        // Don't show error to user, just default to 0
         setBalance(0);
         setError(null);
       } finally {
@@ -80,14 +75,12 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
       }
     };
 
-    // Fetch immediately and refresh every 30 seconds
     fetchTreasuryBalance();
     const interval = setInterval(fetchTreasuryBalance, 30000);
 
     return () => clearInterval(interval);
   }, [mounted, treasuryAddress]);
 
-  // Don't render content until mounted to avoid hydration mismatch
   if (!mounted) {
     return (
       <div className="w-full bg-gradient-to-br from-amber-900/30 to-orange-900/20 border border-amber-500/30 rounded-xl p-5 shadow-lg">
@@ -125,7 +118,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
         </div>
       </div>
 
-      {/* Balance Display */}
       <div className="space-y-2">
         {loading ? (
           <div className="animate-pulse">
@@ -153,7 +145,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
         )}
       </div>
 
-      {/* Quick Stats */}
       <div className="mt-4 pt-4 border-t border-amber-500/20 grid grid-cols-2 gap-2">
         <div className="bg-amber-500/10 rounded p-2">
           <p className="text-[10px] text-gray-500 uppercase font-semibold">Status</p>
@@ -168,7 +159,6 @@ export default function TreasuryWidget({ treasuryAddress }: TreasuryWidgetProps)
         </div>
       </div>
 
-      {/* Footer Info */}
       <p className="text-[10px] text-gray-500 mt-3 text-center">
         Updates every 30 seconds • Powered by Blockfrost
       </p>

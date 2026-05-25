@@ -52,7 +52,6 @@ const Wallet = ({ onWalletChange }: WalletProps) => {
     setSelectedWallet(e.target.value);
   };
 
-  // ── Connected state ──────────────────────────────────────────
   if (wallet && address) {
     return (
       <div className="flex items-center gap-3">
@@ -70,7 +69,6 @@ const Wallet = ({ onWalletChange }: WalletProps) => {
     );
   }
 
-  // ── Disconnected state ───────────────────────────────────────
   return (
     <div className="flex items-center gap-2">
       <select

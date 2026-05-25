@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { timeAgoFrom, colorFromAddr, initialsFromAddress } from "@/lib/formatter";
 import { supabase } from "@/lib/supabase";
 
@@ -57,7 +57,6 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
   const [filter, setFilter] = useState<"all" | "recent">("all");
   const [donations, setDonations] = useState<Donation[]>([]);
 
-  // ✅ useCallback so the function reference is stable across renders
   const fetchDonations = useCallback(async () => {
     if (!campaignAddress) return;
     try {
@@ -113,11 +112,10 @@ export default function DonationHistory({ campaignAddress }: DonationHistoryProp
         console.log("Realtime subscription status:", status);
       });
 
-    // ✅ cleanup on unmount
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [campaignAddress, fetchDonations]); // ✅ fetchDonations in deps since it's stable via useCallback
+  }, [campaignAddress, fetchDonations]); 
 
   const filtered = filter === "recent" ? donations.slice(0, 3) : donations;
 

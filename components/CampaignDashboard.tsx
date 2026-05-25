@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Campaign } from "./types";
 import StatusBadge from "./StatusBadge";
 
@@ -44,7 +43,6 @@ export default function CampaignDashboard({
         </div>
       ) : (
         <>
-          {/* ── Active Campaigns ──────────────────────── */}
           <div>
             <h2 className="text-xs font-mono font-semibold text-gray-500 uppercase tracking-widest mb-4">
               Active Campaigns
@@ -82,7 +80,6 @@ export default function CampaignDashboard({
             </div>
           </div>
 
-          {/* ── Completed Campaigns ───────────────────── */}
           <div>
             <h2 className="text-xs font-mono font-semibold text-gray-500 uppercase tracking-widest mb-4">
               Completed Campaigns

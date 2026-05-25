@@ -24,7 +24,6 @@ export default function RegisterCampaignModal({
 }: RegisterCampaignModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
 
-  // Step 1 state
   const [availableWallets, setAvailableWallets] = useState<string[]>([]);
   const [selectedWalletName, setSelectedWalletName] = useState("Select Wallet");
   const [connectedWallet, setConnectedWallet] = useState<MeshCardanoBrowserWallet | null>(null);
@@ -32,7 +31,6 @@ export default function RegisterCampaignModal({
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
 
-  // Step 2 state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [goal, setGoal] = useState("1000");
@@ -123,7 +121,6 @@ export default function RegisterCampaignModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-[#141722] border border-white/10 w-full max-w-lg rounded-2xl flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
 
-        {/* Header */}
         <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0f1117]">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-gray-200">Register New Campaign</span>
@@ -145,7 +142,6 @@ export default function RegisterCampaignModal({
           </button>
         </div>
 
-        {/* Step 1 — Wallet Ownership Proof */}
         {step === 1 && (
           <div className="p-6 space-y-5 text-sm font-mono">
             <div>
@@ -209,7 +205,6 @@ export default function RegisterCampaignModal({
           </div>
         )}
 
-        {/* Step 2 — Campaign Details */}
         {step === 2 && (
           <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm font-mono">
             <div>

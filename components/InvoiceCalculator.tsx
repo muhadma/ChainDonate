@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { TrendingUp } from "lucide-react";
 
 interface InvoiceCalculatorProps {
@@ -20,7 +19,6 @@ export default function InvoiceCalculator({ donationAmount, treasuryEnabled }: I
         <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Invoice Summary</p>
       </div>
 
-      {/* Donation Amount */}
       <div className="flex justify-between items-center text-sm">
         <span className="text-gray-400">Donation Amount:</span>
         <span className={`font-mono font-semibold ${donation > 0 ? "text-emerald-400" : "text-gray-500"}`}>
@@ -28,7 +26,6 @@ export default function InvoiceCalculator({ donationAmount, treasuryEnabled }: I
         </span>
       </div>
 
-      {/* Treasury Fee */}
       {treasuryEnabled && (
         <div className="flex justify-between items-center text-sm border-t border-white/5 pt-3">
           <span className="text-amber-400/80 flex items-center gap-1">
@@ -39,7 +36,6 @@ export default function InvoiceCalculator({ donationAmount, treasuryEnabled }: I
         </div>
       )}
 
-      {/* Total */}
       <div className={`flex justify-between items-center text-sm font-semibold rounded-lg p-2.5 ${
         total > 0 
           ? "bg-emerald-500/10 border border-emerald-500/30" 
@@ -51,7 +47,6 @@ export default function InvoiceCalculator({ donationAmount, treasuryEnabled }: I
         </span>
       </div>
 
-      {/* Info Message */}
       {total > 0 && (
         <p className="text-[11px] text-gray-500 pt-1">
           ✓ This amount will be sent to your wallet for signature
