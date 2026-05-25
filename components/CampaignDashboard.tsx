@@ -43,29 +43,43 @@ export default function CampaignDashboard({
           No active campaigns found in database. Click Register above to launch one!
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {campaigns.map((campaign) => (
-            <div
-              key={campaign.id}
-              onClick={() => onSelectCampaign(campaign)}
-              className="group border border-white/10 rounded-xl p-6 bg-[#141722] hover:border-indigo-500/50 cursor-pointer transition flex flex-col justify-between space-y-4 shadow-lg"
-            >
-              <div>
-                <div className="flex justify-between items-start gap-4">
-                  <h3 className="text-lg font-medium group-hover:text-indigo-400 transition truncate">
-                    {campaign.title}
-                  </h3>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    <StatusBadge status={campaign.isVerified ? "VERIFIED" : "PENDING"} />
-                    {campaign.treasuryEnabled && (
-                      <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                        Treasury
-                      </span>
-                    )}
+        <>
+          {/* ── Active Campaigns ──────────────────────── */}
+          <div>
+            <h2 className="text-xs font-mono font-semibold text-gray-500 uppercase tracking-widest mb-4">
+              Active Campaigns
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {activeCampaigns.map((campaign) => (
+                <div
+                  key={campaign.id}
+                  onClick={() => onSelectCampaign(campaign)}
+                  className="group border border-white/10 rounded-xl p-6 bg-[#141722] hover:border-indigo-500/50 cursor-pointer transition flex flex-col justify-between space-y-4 shadow-lg"
+                >
+                  <div>
+                    <div className="flex justify-between items-start gap-4">
+                      <h3 className="text-lg font-medium group-hover:text-indigo-400 transition truncate">
+                        {campaign.title}
+                      </h3>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <StatusBadge status={campaign.isVerified ? "VERIFIED" : "PENDING"} />
+                        {campaign.treasuryEnabled && (
+                          <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                            Treasury
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                      {campaign.description}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="text-[11px] font-mono text-gray-600 bg-[#0f1117] p-2 rounded border border-white/5 truncate">
+                    Target: {campaign.targetAddress.slice(0, 14)}...
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── Completed Campaigns ───────────────────── */}
